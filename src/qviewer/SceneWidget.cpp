@@ -1,62 +1,105 @@
+#include <algorithm>
 #include <QPainter>
 #include <QTimer>
 #include "SceneWidget.h"
 
+using std::min;
+using std::max;
+
 static const int imgWidth = 512;
 static const int imgHeight = 512;
 
+static inline float sqr(float x)
+{
+  return x*x;
+}
+
+static inline float3 vmax(float3 a, float3 b)
+{
+  return float3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+}
+
+static inline float3 vabs(float3 v)
+{
+  return float3(abs(v.x), abs(v.y), abs(v.z));
+}
+
+static inline float box(float3 p, float3 b)
+{
+  return length(vmax(vabs(p) - b, float3()));
+}
+
+static inline float sphere(float3 p, float r)
+{
+  return length(p) - r;
+}
+
+static float sceneDist(float3 p)
+{
+  static const float3 bs(0.7, 0.7, 0.7);
+  static const float3 c(0.0, 0.0, 1.0);
+  return min(p.z, min(sphere(p-c, 1), box(p-c, bs)));
+}
+
 SceneWidget::SceneWidget(QWidget *parent)
   : QWidget(parent),
-    m_image(imgWidth, imgHeight, QImage::Format_ARGB32),
-    m_pixbuf(imgWidth, imgHeight)
+    m_image(imgWidth, imgHeight, QImage::Format_ARGB32)
 {
-  m_timer.start();
-
-  QTimer *updater = new QTimer(this);
-  updater->start(1000/25);
-  connect(updater, SIGNAL(timeout()), SLOT(update()));
+  m_scene.dist = sceneDist;
+  m_scene.ambient = float3(0.3, 0.3, 0.3);
+  m_scene.diffuse = float3(0.5, 0.5, 0.5);
+  m_scene.lights.push_back(
+        Renderer::Light(float3(10.0f, 10.0f, 10.0f),
+                        float3(1.0f, 1.0f, 1.0f)));
+  m_scene.lights.push_back(
+        Renderer::Light(float3(-1.0f, -5.0f, 2.0f),
+                        float3(0.1f, 0.1f, 0.9f)));
 }
 
 void SceneWidget::paintEvent(QPaintEvent *)
 {
-  render(m_timer.elapsed() / 1000.0);
+  render(m_phase*2*M_PI/1000);
   QPainter p(this);
   p.drawImage(0, 0, m_image);
 }
 
-static float scene(float3 p)
+static float3 blend(const Renderer::Pixel &p)
 {
-  float plane = dot(float3(0, 0, 1), p);
+  static const float3 mask(1.0, 0.0, 0.0);
 
-  float s1 = length(p) - 1;
-  float s2 = length(p - float3(0, 0.3, 1.0)) - 0.1;
-
-  return qMin(plane, qMin(s1, s2));
+  float3 color = p.ambientOcclusion * p.ambient + p.diffuse + p.specular;
+  float hblend = qBound(0, p.steps, 1000)/1000.0;
+  float3 res = (1-hblend) * color + hblend * mask;
+  return float3(qBound(0.0f, res.x, 1.0f),
+                qBound(0.0f, res.y, 1.0f),
+                qBound(0.0f, res.z, 1.0f));
 }
 
 void SceneWidget::render(float phase)
 {
+  float w = imgWidth;
+  float h = imgHeight;
+
   float camr = 5;
   float camx = cos(phase) * camr;
   float camy = sin(phase) * camr;
-  float camz = 5 + 3*sin(phase);
-  FlatCamera cam(M_PI/6, float(imgWidth)/float(imgHeight),
-                float3(camx, camy, camz), float3(0, 0, 0.5), float3(0, 0, 1));
+  float camz = 5.1 + 5*sin(phase);
+  m_scene.cam =  FlatCamera(M_PI/3, w/h,
+                            float3(camx, camy, camz),
+                            float3(0.0f, 0.0f, 0.5f),
+                            float3(0.0f, 0.0f, 1.0f));
 
   QTime time;
   time.start();
 
-  Renderer::render(m_pixbuf, scene, cam);
-
-#pragma omp parallel for
+  Renderer::Pixel pix;
+#pragma omp parallel for private(pix)
   for (int y=0; y<imgHeight; y++)
     for (int x=0; x<imgWidth; x++)
     {
-      const Renderer::Pixel &pix = m_pixbuf.at(x, y);
+      m_scene.renderPixel(pix, x/w, 1.0f-y/h);
+      float3 col = blend(pix);
 
-      float hblend = qBound(0, pix.steps, 100)/100.0;
-      float3 col = (1-hblend) * pix.ambientOcclusion * pix.color
-                 + hblend     * float3(1.0, 0.0, 0.0);
       ((QRgb *)m_image.scanLine(y))[x] = qRgb(255*col.x, 255*col.y, 255*col.z);
     }
 

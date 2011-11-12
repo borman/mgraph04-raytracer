@@ -24,13 +24,3 @@ QMAKE_CXXFLAGS += /favor:EM64T /Gr
 
 QMAKE_LFLAGS += /LTCG
 
-
-
-
-
-
-
-
-
-
-

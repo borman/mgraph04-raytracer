@@ -12,14 +12,16 @@ class SceneWidget : public QWidget
 public:
   explicit SceneWidget(QWidget *parent = 0);
   QSize sizeHint() const;
+public slots:
+  void setPhase(int phase) { m_phase = phase; update(); }
 protected:
   void paintEvent(QPaintEvent *);
 private:
   void render(float phase);
 
-  QTime m_timer;
+  Renderer::Scene m_scene;
+  float m_phase;
   QImage m_image;
-  Matrix<Renderer::Pixel> m_pixbuf;
 };
 
 #endif // SCENEWIDGET_H

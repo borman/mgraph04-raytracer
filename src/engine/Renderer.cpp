@@ -3,40 +3,53 @@
 
 using namespace Renderer;
 
-static const Pixel background = { float3(), float3(), FLT_MAX, 0.0, 0.0, 0 };
+static const Pixel background = { float3(), float3(), float3(), float3(), FLT_MAX, 0.0, 0.0, 0 };
 
 inline static float3 estimateNormal(DistanceField dist, const float3 &z);
 static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField dist, int &_steps);
+static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceField dist, float maxz);
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist);
+static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceField dist, const float3 &ray);
 
-
-void Renderer::render(Matrix<Renderer::Pixel> &buf, DistanceField dist, const FlatCamera &cam)
+static inline float diffuseBRDF(const float3 &normal, const float3 &eye, const float3 &light)
 {
-  float w = buf.width()-1;
-  float h = buf.height()-1;
-
-#pragma omp parallel for
-  for (int y=0; y<buf.height(); y++)
-    for (int x=0; x<buf.width(); x++)
-    {
-      float3 ray = cam.project(x/w, 1-y/h);
-      Pixel &pix = buf.at(x, y);
-      int steps;
-      float z = rayMarchHit(cam.pos(), ray, dist, steps);
-      if (z < FLT_MAX)
-      {
-        float3 p = cam.pos() + z*ray;
-        pix.z = z;
-        pix.alpha = 1.0;
-        pix.steps = steps;
-        pix.normal = estimateNormal(dist, p);
-        pix.color = float3(1.0, 1.0, 1.0);
-        pix.ambientOcclusion = ambientOcclusion(p, pix.normal, dist);
-      }
-      else
-        pix = background;
-    }
+  return dot(normal, normalize(eye+light));
 }
+
+// Render a single pixel
+void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float x, float y)
+{
+  float3 ray = cam.project(x, y);
+  pix.z = rayMarchHit(cam.pos(), ray, dist, pix.steps);
+  if (pix.z < FLT_MAX)
+  {
+    float3 p = cam.pos() + pix.z*ray;
+    pix.alpha = 1.0f;
+    pix.normal = estimateNormal(dist, p);
+
+    pix.ambient = ambient;
+
+    pix.diffuse = float3(0.0f, 0.0f, 0.0f);
+    pix.specular = float3(0.0f, 0.0f, 0.0f);
+    for (int i=0; i<lights.size(); i++)
+    {
+      float3 lvec = lights[i].pos - p;
+      float dl = length(lvec);
+      lvec /= dl;
+
+      pix.diffuse += rayMarchShadow(p, lvec, dist, dl)
+                     * diffuseBRDF(pix.normal, -ray, lvec)
+                     * lights[i].color;
+    }
+    pix.diffuse *= diffuse;
+    pix.specular *= specular;
+
+    pix.ambientOcclusion = ambientOcclusion(p, pix.normal, dist);
+  }
+  else
+    pix = background;
+}
+
 
 // Numeric gradient approximation
 inline static float3 estimateNormal(DistanceField dist, const float3 &p)
@@ -55,7 +68,7 @@ static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField 
 {
   static const int maxSteps = 1000;
   static const float hitThreshold = 0.002f;
-  static const float missThreshold = 1000.0f;
+  static const float missThreshold = 100.0f;
 
   float z = 0;
   for (int steps=0; steps<maxSteps; steps++)
@@ -68,20 +81,39 @@ static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField 
       return z;
     }
 
-    if (steps > 5 && d > missThreshold)
+    if (z > missThreshold)
       break;
 
     z += d;
   }
 
-  _steps = 0;
-  return FLT_MAX;
+  _steps = maxSteps;
+  if (z > missThreshold)
+    return FLT_MAX;
+  else
+    return z;
+}
+
+static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceField dist, float maxz)
+{
+  static const float k = 5;
+  int steps = 100;
+  float dens = 1.0f;
+  for (float z = 0.01f; steps && z<maxz; --steps)
+  {
+    float d = dist(origin + z*ray);
+    if (d < 1e-4)
+      return 0.0f;
+    dens = qMin(dens, k*d/z);
+    z += d;
+  }
+  return dens;
 }
 
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist)
 {
-  static const float delta = 0.1f;
-  static const float blend = 1.0f;
+  static const float delta = 0.05f;
+  static const float blend = 2.0f;
   static const int iter = 5;
 
   float ao = 0;

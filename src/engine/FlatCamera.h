@@ -6,6 +6,7 @@
 class FlatCamera
 {
 public:
+  FlatCamera() {}
   FlatCamera(float fov, float aspect,
              const float3 &cam, const float3 &lookat, const float3 &up);
 

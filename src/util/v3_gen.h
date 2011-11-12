@@ -15,6 +15,7 @@ struct v3
 
   v3 operator+(const v3 &op) const { return v3(x+op.x, y+op.y, z+op.z); }
   v3 operator-(const v3 &op) const { return v3(x-op.x, y-op.y, z-op.z); }
+  v3 operator*(const v3 &op) const { return v3(x*op.x, y*op.y, z*op.z); }
   v3 operator*(F op) const { return v3(x*op, y*op, z*op); }
   v3 operator/(F op) const { return v3(x/op, y/op, z/op); }
 

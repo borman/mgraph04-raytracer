@@ -1,10 +1,10 @@
-#include <QtGui/QApplication>
-#include "MainWindow.h"
+#include <QApplication>
+#include "SceneWidget.h"
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    MainWindow w;
+    SceneWidget w;
     w.show();
 
     return a.exec();

@@ -27,10 +27,11 @@ namespace Renderer
 
   struct Light
   {
-    Light(const float3 &_pos=float3(), const float3 &_color=float3())
-      : pos(_pos), color(_color) {}
+    Light(const float3 &_pos=float3(), const float3 &_color=float3(), float _ac=1.0, float _al=0.0, float _aq=0.0)
+      : pos(_pos), color(_color), attConst(_ac), attLinear(_al), attQuad(_aq) {}
     float3 pos;
     float3 color;
+    float attConst, attLinear, attQuad;
   };
 
   struct Scene
@@ -38,9 +39,11 @@ namespace Renderer
     DistanceField dist;
     std::vector<Light> lights;
     FlatCamera cam;
+    // TODO: make a separate material class
     float3 ambient;
     float3 diffuse;
     float3 specular;
+    float shininess;
 
     void renderPixel(Renderer::Pixel &pix, float x, float y);
   };

@@ -40,9 +40,13 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float x, float y)
       float dl = length(lvec);
       lvec /= dl;
 
-      pix.diffuse += rayMarchShadow(p, lvec, dist, dl)
-                     * diffuseBRDF(pix.normal, -ray, lvec)
-                     * lights[i].color;
+      float att = 1.0f / (1e-4 + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
+      float power = rayMarchShadow(p, lvec, dist, dl) * att;
+      float diffuse = diffuseBRDF(pix.normal, -ray, lvec);
+      float specular = pow(diffuse, shininess);
+
+      pix.diffuse += power*diffuse*lights[i].color;
+      pix.specular += power*specular*lights[i].color;
     }
     pix.diffuse *= diffuse;
     pix.specular *= specular;
@@ -70,7 +74,7 @@ inline static float3 estimateNormal(DistanceField dist, const float3 &p)
 static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField dist, int &_steps)
 {
   static const int maxSteps = 1000;
-  static const float hitThreshold = 0.002f;
+  static const float hitThreshold = 1e-4f;
   static const float missThreshold = 100.0f;
 
   float z = 0.01f;
@@ -112,8 +116,8 @@ static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceFie
 
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist)
 {
-  static const float delta = 0.05f;
-  static const float blend = 2.0f;
+  static const float delta = 0.07f;
+  static const float blend = 1.0f;
   static const int iter = 10;
 
   float ao = 0;

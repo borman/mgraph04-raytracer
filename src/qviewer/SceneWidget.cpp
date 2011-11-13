@@ -1,3 +1,4 @@
+#include <cmath>
 #include <algorithm>
 #include <QPainter>
 #include <QTimer>

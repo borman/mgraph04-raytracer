@@ -1,4 +1,5 @@
 #include <cfloat>
+#include <cmath>
 #include <algorithm>
 #include "Renderer.h"
 
@@ -43,7 +44,7 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float x, float y)
       float att = 1.0f / (1e-4f + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
       float power = rayMarchShadow(p, lvec, dist, dl) * att;
       float diffuse = diffuseBRDF(pix.normal, -ray, lvec).scalar();
-      float specular = pow(diffuse, shininess);
+      float specular = powf(diffuse, shininess);
 
       pix.diffuse += power*diffuse*lights[i].color;
       pix.specular += power*specular*lights[i].color;

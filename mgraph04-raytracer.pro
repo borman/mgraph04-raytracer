@@ -19,10 +19,17 @@ HEADERS += v3_gen.h \
            Renderer.h \
            SceneWidget.h
 
-DEFINES += _USE_MATH_DEFINES
-QMAKE_CXXFLAGS += /openmp /fp:fast /Ox /Ot /Ob1 /Oi /GS- /GL
-QMAKE_CXXFLAGS += /favor:EM64T /Gr
+win32 {
+  DEFINES += _USE_MATH_DEFINES
+  QMAKE_CXXFLAGS += /openmp /fp:fast /Ox /Ot /Ob1 /Oi /GS- /GL
+  QMAKE_CXXFLAGS += /favor:EM64T /Gr
 
-QMAKE_LFLAGS += /LTCG
+  QMAKE_LFLAGS += /LTCG
+}
+
+unix {
+  QMAKE_CXXFLAGS += -msse4 -march=corei7 -fopenmp -flto -Ofast -fno-exceptions -fno-rtti
+  QMAKE_LFLAGS += -fopenmp
+}
 
 

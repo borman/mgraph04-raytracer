@@ -1,3 +1,4 @@
+#include <cmath>
 #include "FlatCamera.h"
 
 FlatCamera::FlatCamera(float fov, float aspect,

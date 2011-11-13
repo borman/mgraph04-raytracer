@@ -14,7 +14,7 @@ static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceFie
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist);
 static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceField dist, const float3 &ray);
 
-static inline float diffuseBRDF(const float3 &normal, const float3 &eye, const float3 &light)
+static inline float3 diffuseBRDF(const float3 &normal, const float3 &eye, const float3 &light)
 {
   return dot(normal, normalize(eye+light));
 }
@@ -37,12 +37,12 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float x, float y)
     for (int i=0; i<lights.size(); i++)
     {
       float3 lvec = lights[i].pos - p;
-      float dl = length(lvec);
-      lvec /= dl;
+      float dl = length(lvec).scalar();
+      lvec = normalize(lvec);
 
-      float att = 1.0f / (1e-4 + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
+      float att = 1.0f / (1e-4f + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
       float power = rayMarchShadow(p, lvec, dist, dl) * att;
-      float diffuse = diffuseBRDF(pix.normal, -ray, lvec);
+      float diffuse = diffuseBRDF(pix.normal, -ray, lvec).scalar();
       float specular = pow(diffuse, shininess);
 
       pix.diffuse += power*diffuse*lights[i].color;
@@ -108,7 +108,7 @@ static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceFie
     float d = dist(origin + z*ray);
     if (d < 1e-4)
       return 0.0f;
-    dens = qMin(dens, k*d/z);
+    dens = min(dens, k*d/z);
     z += d;
   }
   return dens;

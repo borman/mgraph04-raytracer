@@ -16,11 +16,13 @@ HEADERS += v3_gen.h \
            matrix.h \
            FlatCamera.h \
            Renderer.h \
-    src/qviewer/SceneWidget.h
+    src/qviewer/SceneWidget.h \
+    src/util/float3_sse.h
 
 DEFINES += _USE_MATH_DEFINES
 QMAKE_CXXFLAGS += /openmp /fp:fast /O2 /Ot /Ob1 /Oi /GS- /GL
 QMAKE_CXXFLAGS += /favor:EM64T /Gr
 
 QMAKE_LFLAGS += /LTCG
+
 

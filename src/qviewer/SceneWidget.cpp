@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <QPainter>
 #include <QTimer>
+#include <QDebug>
 #include "SceneWidget.h"
 
 using std::min;
@@ -9,29 +10,14 @@ using std::max;
 static const int imgWidth = 512;
 static const int imgHeight = 512;
 
-static inline float sqr(float x)
+static inline float3 box(float3 p, float3 b)
 {
-  return x*x;
+  return length(vmax(vabs(p) - b, float3(0.0f)));
 }
 
-static inline float3 vmax(float3 a, float3 b)
+static inline float3 sphere(float3 p, float r)
 {
-  return float3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
-}
-
-static inline float3 vabs(float3 v)
-{
-  return float3(abs(v.x), abs(v.y), abs(v.z));
-}
-
-static inline float box(float3 p, float3 b)
-{
-  return length(vmax(vabs(p) - b, float3()));
-}
-
-static inline float sphere(float3 p, float r)
-{
-  return length(p) - r;
+  return length(p) - float3(r);
 }
 
 static float sceneDist(float3 p)
@@ -39,7 +25,8 @@ static float sceneDist(float3 p)
   static const float3 bs(0.7f, 0.7f, 0.9f);
   static const float3 c1(0.3f, -0.3f, 1.0f);
   static const float3 c2(0.0f, 0.0f, 0.8f);
-  return min(p.z, min(sphere(p-c1, 1), box(p-c2, bs)));
+  static const float3 n(0.0f, 0.0f, 1.0f);
+  return vmin(dot(p, n), vmin(sphere(p-c1, 1), box(p-c2, bs))).scalar();
 }
 
 SceneWidget::SceneWidget(QWidget *parent)
@@ -85,9 +72,7 @@ static float3 blend(const Renderer::Pixel &p)
 #else
   float3 res = color;
 #endif
-  return float3(qBound(0.0f, res.x, 1.0f),
-                qBound(0.0f, res.y, 1.0f),
-                qBound(0.0f, res.z, 1.0f));
+  return vbound(float3(0.0f), res, float3(1.0f));
 }
 
 void SceneWidget::render(float phase)
@@ -115,7 +100,7 @@ void SceneWidget::render(float phase)
       m_scene.renderPixel(pix, x/w, 1.0f-y/h);
       float3 col = blend(pix);
 
-      ((QRgb *)m_image.scanLine(y))[x] = qRgb(255*col.x, 255*col.y, 255*col.z);
+      ((QRgb *)m_image.scanLine(y))[x] = qRgb(255*col.x(), 255*col.y(), 255*col.z());
     }
 
   qDebug() << "Rendering:" << time.elapsed() << "msec";

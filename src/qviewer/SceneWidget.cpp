@@ -36,9 +36,10 @@ static inline float sphere(float3 p, float r)
 
 static float sceneDist(float3 p)
 {
-  static const float3 bs(0.7, 0.7, 0.7);
-  static const float3 c(0.0, 0.0, 1.0);
-  return min(p.z, min(sphere(p-c, 1), box(p-c, bs)));
+  static const float3 bs(0.7, 0.7, 0.9);
+  static const float3 c1(0.0, 0.0, 1.0);
+  static const float3 c2(0.0, 0.0, 0.8);
+  return min(p.z, min(sphere(p-c1, 1), box(p-c2, bs)));
 }
 
 SceneWidget::SceneWidget(QWidget *parent)
@@ -50,7 +51,7 @@ SceneWidget::SceneWidget(QWidget *parent)
   m_scene.diffuse = float3(0.5, 0.5, 0.5);
   m_scene.lights.push_back(
         Renderer::Light(float3(10.0f, 10.0f, 10.0f),
-                        float3(1.0f, 1.0f, 1.0f)));
+                        float3(1.2f, 0.2f, 0.2f)));
   m_scene.lights.push_back(
         Renderer::Light(float3(-1.0f, -5.0f, 2.0f),
                         float3(0.1f, 0.1f, 0.9f)));
@@ -68,8 +69,12 @@ static float3 blend(const Renderer::Pixel &p)
   static const float3 mask(1.0, 0.0, 0.0);
 
   float3 color = p.ambientOcclusion * p.ambient + p.diffuse + p.specular;
-  float hblend = qBound(0, p.steps, 1000)/1000.0;
+#if 0
+  float hblend = qBound(0, p.steps, 100)/100.0;
   float3 res = (1-hblend) * color + hblend * mask;
+#else
+  float3 res = color;
+#endif
   return float3(qBound(0.0f, res.x, 1.0f),
                 qBound(0.0f, res.y, 1.0f),
                 qBound(0.0f, res.z, 1.0f));
@@ -80,11 +85,11 @@ void SceneWidget::render(float phase)
   float w = imgWidth;
   float h = imgHeight;
 
-  float camr = 5;
+  float camr = 3;
   float camx = cos(phase) * camr;
   float camy = sin(phase) * camr;
-  float camz = 5.1 + 5*sin(phase);
-  m_scene.cam =  FlatCamera(M_PI/3, w/h,
+  float camz = 3.1 + 3*sin(phase);
+  m_scene.cam =  FlatCamera(M_PI/4, w/h,
                             float3(camx, camy, camz),
                             float3(0.0f, 0.0f, 0.5f),
                             float3(0.0f, 0.0f, 1.0f));

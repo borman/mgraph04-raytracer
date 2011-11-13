@@ -1,7 +1,10 @@
 #include <cfloat>
+#include <algorithm>
 #include "Renderer.h"
 
 using namespace Renderer;
+using std::min;
+using std::max;
 
 static const Pixel background = { float3(), float3(), float3(), float3(), FLT_MAX, 0.0, 0.0, 0 };
 
@@ -70,20 +73,17 @@ static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField 
   static const float hitThreshold = 0.002f;
   static const float missThreshold = 100.0f;
 
-  float z = 0;
+  float z = 0.01f;
   for (int steps=0; steps<maxSteps; steps++)
   {
-    float3 p = origin + z*ray;
-    float d = dist(p);
-    if (d < hitThreshold) // assume a hit
+    float d = dist(origin + z*ray);
+    if (d < hitThreshold)
     {
       _steps = steps;
       return z;
     }
-
     if (z > missThreshold)
       break;
-
     z += d;
   }
 
@@ -114,7 +114,7 @@ static float ambientOcclusion(const float3 &point, const float3 &normal, Distanc
 {
   static const float delta = 0.05f;
   static const float blend = 2.0f;
-  static const int iter = 5;
+  static const int iter = 10;
 
   float ao = 0;
   for (int i=iter; i>0; i--)

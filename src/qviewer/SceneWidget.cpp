@@ -84,7 +84,7 @@ void SceneWidget::render(float phase)
   float camx = cos(phase) * camr;
   float camy = sin(phase) * camr;
   float camz = 3.1 + 3*sin(phase);
-  m_scene.cam =  FlatCamera(M_PI/4, w/h,
+  m_scene.cam =  FlatCamera(float(M_PI/4.0), w/h,
                             float3(camx, camy, camz),
                             float3(0.0f, 0.0f, 0.5f),
                             float3(0.0f, 0.0f, 1.0f));

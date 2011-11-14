@@ -22,6 +22,7 @@ private:
   Renderer::Scene m_scene;
   float m_phase;
   QImage m_image;
+  QImage m_aux;
 };
 
 #endif // SCENEWIDGET_H

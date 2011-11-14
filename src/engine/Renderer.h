@@ -8,21 +8,24 @@
 
 namespace Renderer
 {
-  typedef float (*DistanceField)(float3);
-
   struct Pixel
   {
+    float3 pos;
     float3 normal;
 
     // Color components
     float3 ambient;
     float3 diffuse;
     float3 specular;
+    float3 reflected;
+    float3 refracted;
 
     float z; // Depth buffer
     float alpha;
     float ambientOcclusion;
     int steps;
+
+    float3 blend() const;
   };
 
   struct Light
@@ -34,18 +37,30 @@ namespace Renderer
     float attConst, attLinear, attQuad;
   };
 
-  struct Scene
+  struct Material
   {
-    DistanceField dist;
-    std::vector<Light> lights;
-    FlatCamera cam;
-    // TODO: make a separate material class
     float3 ambient;
     float3 diffuse;
     float3 specular;
     float shininess;
+    float reflect;
+    float refract;
+    float refractionIndex;
+  };
 
-    void renderPixel(Renderer::Pixel &pix, float x, float y);
+  typedef float (*DistanceField)(float3);
+  typedef int (*MaterialFunc)(float3);
+
+  struct Scene
+  {
+    DistanceField dist;
+    MaterialFunc mats;
+
+    std::vector<Light> lights;
+    std::vector<Material> materials;
+    FlatCamera cam;
+
+    void renderPixel(Renderer::Pixel &pix, float x, float y, int maxDepth = 10);
   };
 }
 

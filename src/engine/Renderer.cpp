@@ -7,11 +7,11 @@ using namespace Renderer;
 using std::min;
 using std::max;
 
-static const Pixel background = { float3(), float3(), float3(), float3(), FLT_MAX, 0.0, 0.0, 0 };
+static const Pixel background = { float3(), float3(), float3(), float3(), float3(), float3(), float3(), FLT_MAX, 0.0, 0.0, 0 };
 
 inline static float3 estimateNormal(DistanceField dist, const float3 &z);
 static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField dist, int &_steps);
-static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceField dist, float maxz);
+static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceField dist, float maxz, int &_steps);
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist);
 static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceField dist, const float3 &ray);
 
@@ -20,49 +20,55 @@ static inline float3 diffuseBRDF(const float3 &normal, const float3 &eye, const 
   return dot(normal, normalize(eye+light));
 }
 
+float3 Renderer::Pixel::blend() const
+{
+  return (ambientOcclusion*ambient) + diffuse + specular + reflected + refracted;
+}
+
+
 // Render a single pixel
-void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float x, float y)
+void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float x, float y, int maxDepth)
 {
   float3 ray = cam.project(x, y);
+  pix = background;
   pix.z = rayMarchHit(cam.pos(), ray, dist, pix.steps);
   if (pix.z < FLT_MAX)
   {
-    float3 p = cam.pos() + pix.z*ray;
+    pix.pos = cam.pos() + pix.z*ray;
+    pix.normal = estimateNormal(dist, pix.pos);
+    const Material &mat = materials[mats(pix.pos)];
+
     pix.alpha = 1.0f;
-    pix.normal = estimateNormal(dist, p);
-
-    pix.ambient = ambient;
-
+    pix.ambient = mat.ambient;
+    pix.ambientOcclusion = ambientOcclusion(pix.pos, pix.normal, dist);
     pix.diffuse = float3(0.0f, 0.0f, 0.0f);
     pix.specular = float3(0.0f, 0.0f, 0.0f);
     for (int i=0; i<lights.size(); i++)
     {
-      float3 lvec = lights[i].pos - p;
+      float3 lvec = lights[i].pos - pix.pos;
       float dl = length(lvec).scalar();
       lvec = normalize(lvec);
 
+      int steps = 0;
       float att = 1.0f / (1e-4f + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
-      float power = rayMarchShadow(p, lvec, dist, dl) * att;
+      float power = rayMarchShadow(pix.pos, lvec, dist, dl, steps) * att;
       float diffuse = diffuseBRDF(pix.normal, -ray, lvec).scalar();
-      float specular = powf(diffuse, shininess);
+      float specular = powf(diffuse, mat.shininess);
 
+      pix.steps += steps;
       pix.diffuse += power*diffuse*lights[i].color;
       pix.specular += power*specular*lights[i].color;
     }
-    pix.diffuse *= diffuse;
-    pix.specular *= specular;
+    pix.diffuse *= mat.diffuse;
+    pix.specular *= mat.specular;
 
-    pix.ambientOcclusion = ambientOcclusion(p, pix.normal, dist);
   }
-  else
-    pix = background;
 }
-
 
 // Numeric gradient approximation
 inline static float3 estimateNormal(DistanceField dist, const float3 &p)
 {
-  static const float eps = 0.0001f;
+  static const float eps = 1e-5f;
 
   float dx = dist(p + float3(eps, 0, 0)) - dist(p - float3(eps, 0, 0));
   float dy = dist(p + float3(0, eps, 0)) - dist(p - float3(0, eps, 0));
@@ -79,39 +85,40 @@ static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField 
   static const float missThreshold = 100.0f;
 
   float z = 0.01f;
-  for (int steps=0; steps<maxSteps; steps++)
+  int steps=0;
+  for (steps=0; steps<maxSteps && z<missThreshold; steps++)
   {
     float d = dist(origin + z*ray);
     if (d < hitThreshold)
-    {
-      _steps = steps;
-      return z;
-    }
-    if (z > missThreshold)
       break;
     z += d;
   }
 
-  _steps = maxSteps;
+  _steps += steps;
   if (z > missThreshold)
     return FLT_MAX;
   else
     return z;
 }
 
-static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceField dist, float maxz)
+static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceField dist, float maxz, int &_steps)
 {
-  static const float k = 5;
-  int steps = 100;
+  static const float k = 5; // Shadow smoothness
+  static const int maxSteps = 100;
+  int steps = 0;
   float dens = 1.0f;
-  for (float z = 0.01f; steps && z<maxz; --steps)
+  for (float z = 0.01f; steps<maxSteps && z<maxz; steps++)
   {
     float d = dist(origin + z*ray);
-    if (d < 1e-4)
+    if (d < 1e-5f) // Obstacle found
+    {
+      _steps += steps;
       return 0.0f;
+    }
     dens = min(dens, k*d/z);
     z += d;
   }
+  _steps += steps;
   return dens;
 }
 

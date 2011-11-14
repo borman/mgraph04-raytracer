@@ -23,6 +23,8 @@ namespace Renderer
     float z; // Depth buffer
     float alpha;
     float ambientOcclusion;
+    float reflect;
+    float refract;
     int steps;
 
     float3 blend() const;
@@ -50,17 +52,21 @@ namespace Renderer
 
   typedef float (*DistanceField)(float3);
   typedef int (*MaterialFunc)(float3);
+  typedef float3 (*EnvironmentFunc)(float3);
 
   struct Scene
   {
-    DistanceField dist;
-    MaterialFunc mats;
+    DistanceField sceneDist;
+    DistanceField innerSceneDist;
+    MaterialFunc matId;
+    EnvironmentFunc envColor;
 
     std::vector<Light> lights;
     std::vector<Material> materials;
     FlatCamera cam;
 
-    void renderPixel(Renderer::Pixel &pix, float x, float y, int maxDepth = 10);
+    void renderPixel(Renderer::Pixel &pix, float x, float y) const;
+    void renderPixel(Renderer::Pixel &pix, float3 origin, float3 ray, int depth = 4, bool inner = false) const;
   };
 }
 

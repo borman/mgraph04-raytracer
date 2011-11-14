@@ -54,7 +54,7 @@ static inline float3 vabs(float3 u)
 
 static inline float3 dot(float3 u, float3 v)
 {
-  return _mm_dp_ps(u.d, v.d, 0x71); // SSE4
+  return _mm_dp_ps(u.d, v.d, 0x77); // SSE4
 }
 
 static inline float3 cross(float3 u, float3 v)

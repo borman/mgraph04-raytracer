@@ -69,7 +69,13 @@ static inline float3 vsqrt(float3 u)
 
 static inline float3 vdot(float3 u, float3 v)
 {
+#ifdef USE_SSE4
   return _mm_dp_ps(u.d, v.d, 0x77); // SSE4
+#else
+  float3 t = u*v;
+  float3 r = t + _mm_shuffle_ps(t.d, t.d, _MM_SHUFFLE(3,0,2,1));
+  return r + _mm_shuffle_ps(t.d, t.d, _MM_SHUFFLE(3,1,0,2));
+#endif
 }
 
 static inline float3 vcross(float3 u, float3 v)

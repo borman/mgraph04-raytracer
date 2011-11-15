@@ -33,7 +33,7 @@ win32 {
 
 unix {
   QMAKE_CXXFLAGS += -msse4 -march=corei7 -fopenmp -flto -Ofast -fno-exceptions -fno-rtti
-  QMAKE_LFLAGS += -fopenmp
+  QMAKE_LFLAGS += /arch:AVX -fopenmp
 }
 
 

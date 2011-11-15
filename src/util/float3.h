@@ -1,14 +1,25 @@
 #ifndef FLOAT3_H
 #define FLOAT3_H
 
+// Config:
+
+// Use SSE-based hand optimized version
 #define USE_SSE_VECTORS
-//#define USE_DOUBLE
+
+
+// ---------------------------------
 
 #ifdef USE_SSE_VECTORS
+
+// Use SSE4 instructions
+#define USE_SSE4
 
 #include "float3_sse.h"
 
 #else
+
+// Use double precision
+//#define USE_DOUBLE
 
 #include "v3_gen.h"
 #ifdef USE_DOUBLE

@@ -7,7 +7,7 @@ using namespace Renderer;
 using std::min;
 using std::max;
 
-static const Pixel background = { float3(), float3(), float3(), float3(), float3(), float3(), float3(), FLT_MAX, 0.0f, 0.0f, 0.0f, 0.0f, 0 };
+static const Pixel background = { float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), FLT_MAX, 0.0f, 0.0f, 0.0f, 0.0f, 0, 0 };
 
 inline static float3 estimateNormal(DistanceField dist, const float3 &z);
 static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField dist, int &_steps);
@@ -18,17 +18,6 @@ static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceFiel
 static inline float3 reflect(float3 ray, float3 normal)
 {
   return ray - (float(2.0)*vdot(ray, normal))*normal;
-}
-
-static inline bool refract(float3 ray, float3 normal, float k, float3 &newRay)
-{
-  float3 cos_phi1 = vdot(-ray, normal);
-  float3 sin2_phi2 = (k*k) * (float3(1.0f) - cos_phi1*cos_phi1);
-  if (sin2_phi2.scalar() > 1.0f)
-    return false; // Total internal reflection
-  float3 cos_phi2 = vsqrt(float3(1.0f) - sin2_phi2);
-  newRay = k*ray + (k*cos_phi1 - cos_phi2)*normal;
-  return true;
 }
 
 static inline float3 diffuseBRDF(const float3 &normal, const float3 &eye, const float3 &light)
@@ -52,77 +41,101 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float3 origin, float3 ra
   DistanceField dist = inner? innerSceneDist : sceneDist;
 
   pix = background;
+  pix.ray = ray;
   pix.z = rayMarchHit(origin, ray, dist, pix.steps);
   if (pix.z < FLT_MAX)
   {
     pix.pos = origin + pix.z*ray;
     pix.normal = estimateNormal(dist, pix.pos);
-    const Material &mat = materials[matId(pix.pos)];
-
     pix.alpha = 1.0f;
-    pix.ambient = mat.ambient;
-    pix.ambientOcclusion = ambientOcclusion(pix.pos, pix.normal, dist);
-    pix.diffuse = float3(0.0f, 0.0f, 0.0f);
-    pix.specular = float3(0.0f, 0.0f, 0.0f);
-    for (int i=0; i<lights.size(); i++)
-    {
-      float3 lvec = lights[i].pos - pix.pos;
-      float dl = vlength(lvec).scalar();
-      lvec = vnormalize(lvec);
+    pix.matId = matId(pix.pos);
+    const Material &mat = materials[pix.matId];
 
-      int steps = 0;
-      float att = 1.0f / (1e-4f + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
-      float power = rayMarchShadow(pix.pos, lvec, dist, dl, steps) * att;
-      float diffuse = diffuseBRDF(pix.normal, -ray, lvec).scalar();
-      float specular = powf(diffuse, mat.shininess);
-
-      pix.steps += steps;
-      pix.diffuse += power*diffuse*lights[i].color;
-      pix.specular += power*specular*lights[i].color;
-    }
-    pix.diffuse *= mat.diffuse;
-    pix.specular *= mat.specular;
-
+    shade(pix, inner);
     if (depth>0 && (mat.reflect>1e-4f || mat.refract > 1e-4f))
-    {
-      // Compute Fresnel coefficients
-      float k = inner? 1.0f/mat.refractionIndex : mat.refractionIndex;
-      float cos1 = vdot(-ray, pix.normal).scalar();
-      float cos2s = 1.0f - k*k*(1.0f - cos1*cos1);
-      float cos2 = 0.0f;
-      pix.reflect = 1.0f;
-      if (cos2s > 0.0f)
-      {
-        cos2 = sqrt(cos2s);
-        pix.reflect = 0.5f * (sqr((k*cos1 - cos2)/(k*cos1 + cos2)) + sqr((k*cos2 - cos1)/(k*cos2 + cos1)));
-      }
-      pix.refract = 1.0f - pix.reflect;
-      pix.reflect *= mat.reflect;
-      pix.refract *= mat.refract;
-
-      if (pix.reflect>1e-4f)
-      {
-        Pixel tmp;
-        float3 newRay = reflect(ray, pix.normal);
-        renderPixel(tmp, pix.pos, newRay, depth-1, inner);
-        pix.reflected = tmp.blend();
-        pix.steps += tmp.steps;
-      }
-
-      if (pix.refract>1e-4f)
-      {
-        Pixel tmp;
-        float3 newRay = k*ray + (k*cos1 - cos2)*pix.normal;
-        renderPixel(tmp, pix.pos+0.01*ray, newRay, depth-1, !inner);
-        pix.refracted = tmp.blend();
-        pix.steps += tmp.steps;
-      }
-    }
+      reflectRefract(pix, depth, inner);
   }
   else
   {
     pix.ambientOcclusion = 1.0;
     pix.ambient = envColor(ray);
+  }
+}
+
+void Renderer::Scene::shade(Renderer::Pixel &pix, bool inner) const
+{
+  const Material &mat = materials[pix.matId];
+  DistanceField dist = inner? innerSceneDist : sceneDist;
+
+  pix.ambient = mat.ambient;
+  pix.ambientOcclusion = ambientOcclusion(pix.pos, pix.normal, dist);
+  pix.diffuse = float3(0.0f, 0.0f, 0.0f);
+  pix.specular = float3(0.0f, 0.0f, 0.0f);
+  for (int i=0; i<lights.size(); i++)
+  {
+    float3 lvec = lights[i].pos - pix.pos;
+    float dl = vlength(lvec).scalar();
+    lvec = vnormalize(lvec);
+
+    int steps = 0;
+    float att = 1.0f / (1e-4f + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
+    float power = rayMarchShadow(pix.pos, lvec, dist, dl, steps) * att;
+    float diffuse = diffuseBRDF(pix.normal, -pix.ray, lvec).scalar();
+    float specular = powf(diffuse, mat.shininess);
+
+    pix.steps += steps;
+    pix.diffuse += power*diffuse*lights[i].color;
+    pix.specular += power*specular*lights[i].color;
+  }
+  pix.diffuse *= mat.diffuse;
+  pix.specular *= mat.specular;
+}
+
+void Renderer::Scene::reflectRefract(Renderer::Pixel &pix, int depth, bool inner) const
+{
+  const Material &mat = materials[pix.matId];
+  DistanceField dist = inner? innerSceneDist : sceneDist;
+
+  // Compute Fresnel coefficients
+  float k = inner? 1.0f/mat.refractionIndex : mat.refractionIndex; // FIXME: handle actual index relation
+
+  // cos1: falling light angle; cos2: refracted light angle
+  float cos1 = vdot(-pix.ray, pix.normal).scalar();
+  float cos2s = 1.0f - k*k*(1.0f - cos1*cos1);
+  float cos2 = 0.0f;
+
+  pix.reflect = 1.0f;
+  if (cos2s > 0.0f)
+  {
+    cos2 = sqrt(cos2s);
+    pix.reflect = 0.5f * (sqr((k*cos1 - cos2)/(k*cos1 + cos2)) + sqr((k*cos2 - cos1)/(k*cos2 + cos1)));
+  }
+  pix.refract = (1.0f - pix.reflect) * mat.refract;
+  pix.reflect = (1.0f - pix.refract) * mat.reflect;
+  /*
+  pix.refract = 1.0f - pix.reflect;
+  pix.reflect *= mat.reflect;
+  pix.refract *= mat.refract;
+  */
+
+  // Reflected ray
+  if (pix.reflect>1e-4f)
+  {
+    Pixel tmp;
+    float3 newRay = reflect(pix.ray, pix.normal);
+    renderPixel(tmp, pix.pos, newRay, depth-1, inner);
+    pix.reflected = tmp.blend();
+    pix.steps += tmp.steps;
+  }
+
+  // Refracted ray
+  if (pix.refract>1e-4f)
+  {
+    Pixel tmp;
+    float3 newRay = k*pix.ray + (k*cos1 - cos2)*pix.normal;
+    renderPixel(tmp, pix.pos+0.001*pix.ray, newRay, depth-1, !inner);
+    pix.refracted = tmp.blend();
+    pix.steps += tmp.steps;
   }
 }
 
@@ -144,6 +157,7 @@ inline static float3 estimateNormal(DistanceField dist, const float3 &p)
 }
 
 // Ray marching tracer
+// TODO: detect material boundary as a hit?
 static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField dist, int &_steps)
 {
   static const int maxSteps = 1000;

@@ -11,6 +11,7 @@ namespace Renderer
   struct Pixel
   {
     float3 pos;
+    float3 ray;
     float3 normal;
 
     // Color components
@@ -26,6 +27,7 @@ namespace Renderer
     float reflect;
     float refract;
     int steps;
+    int matId;
 
     float3 blend() const;
   };
@@ -65,8 +67,11 @@ namespace Renderer
     std::vector<Material> materials;
     FlatCamera cam;
 
-    void renderPixel(Renderer::Pixel &pix, float x, float y) const;
-    void renderPixel(Renderer::Pixel &pix, float3 origin, float3 ray, int depth = 8, bool inner = false) const;
+    void renderPixel(Pixel &pix, float x, float y) const;
+    void renderPixel(Pixel &pix, float3 origin, float3 ray, int depth = 8, bool inner = false) const;
+
+    void shade(Pixel &pix, bool inner) const;
+    void reflectRefract(Pixel &pix, int depth, bool inner) const;
   };
 }
 

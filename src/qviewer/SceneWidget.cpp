@@ -46,8 +46,8 @@ static QRgb blend_aux(const Renderer::Pixel &p)
   static const float maxVal = 1000;
   float hblend = qBound(float(0.0), float(p.steps), maxVal)/maxVal;
 #endif
-  //return qRgb(0, hblend*255, 0);
-  return vec2rgb(float3(p.reflect));
+  return qRgb(0, hblend*255, 0);
+  //return vec2rgb(float3(p.reflect));
 
   //return vec2rgb(vabs(p.normal));
   //return vec2rgb(p.diffuse);

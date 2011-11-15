@@ -44,8 +44,8 @@ static float sceneDist(float3 p)
 
   float3 scene = sphere1;
   scene = unite(scene, box1);
-  //scene = unite(scene, sphere2);
-  scene = unite(scene, box2);
+  scene = unite(scene, sphere2);
+  //scene = unite(scene, box2);
   return scene.scalar();
 }
 
@@ -82,7 +82,7 @@ MyScene::MyScene()
     mat.diffuse = float3(0.8f, 0.9f, 0.8f);
     mat.specular = float3(1.0f, 1.0f, 1.0f);
     mat.shininess = 1000;
-    mat.reflect = 1.0f;
+    mat.reflect = 0.3f;
     mat.refract = 0.0f;
     mat.refractionIndex = 0.7f;
     materials.push_back(mat);
@@ -94,7 +94,7 @@ MyScene::MyScene()
     mat.diffuse = float3(0.3f, 0.4f, 0.5);
     mat.specular = float3(1.0f, 1.0f, 1.0f);
     mat.shininess = 1000;
-    mat.reflect = 1.0f;
+    mat.reflect = 0.7f;
     mat.refract = 0.7f;
     mat.refractionIndex = 0.5f;
     materials.push_back(mat);
@@ -103,15 +103,15 @@ MyScene::MyScene()
   lights.push_back(
         Renderer::Light(float3(10.0f, 10.0f, 10.0f),
                         float3(0.8f, 0.2f, 0.2f),
-                        0.03f, 0.0f, 0.005f));
+                        2.0f, 0.0f, 0.005f));
   lights.push_back(
         Renderer::Light(float3(-3.0f, 1.0f, 4.0f),
                         float3(0.1f, 0.8f, 0.1f),
-                        0.1f, 0.0f, 0.05f));
+                        2.0f, 0.0f, 0.05f));
   lights.push_back(
         Renderer::Light(float3(-1.0f, -5.0f, 5.0f),
                         float3(0.1f, 0.1f, 0.8f),
-                        0.3f, 0.0f, 0.01f));
+                        2.0f, 0.0f, 0.01f));
 }
 
 #else

@@ -3,7 +3,6 @@
 
 #include <cmath>
 #include <algorithm>
-#include <QDebug>
 
 using std::min;
 using std::max;
@@ -42,10 +41,10 @@ struct v3
 OP v3<F> operator*(F s, v3<F> v) { return v*s; }
 
 // Dot product
-OP v3<F> dot(v3<F> u, v3<F> v) { return v3<F>(u.m_x*v.m_x + u.m_y*v.m_y + u.m_z*v.m_z); }
+OP v3<F> vdot(v3<F> u, v3<F> v) { return v3<F>(u.m_x*v.m_x + u.m_y*v.m_y + u.m_z*v.m_z); }
 
 // Cross product
-OP v3<F> cross(v3<F> u, v3<F> v)
+OP v3<F> vcross(v3<F> u, v3<F> v)
 {
   return v3<F>(u.m_y*v.m_z - u.m_z*v.m_y,
                u.m_z*v.m_x - u.m_x*v.m_z,
@@ -53,24 +52,16 @@ OP v3<F> cross(v3<F> u, v3<F> v)
 }
 
 // Higher-level functions
-OP v3<F> square(v3<F> v) { return dot(v, v); }
-OP v3<F> length(v3<F> v) { return v3<F>(sqrtf(dot(v, v).scalar())); }
-OP v3<F> normalize(v3<F> v) { return v / length(v); }
+OP v3<F> vlength(v3<F> v) { return v3<F>(sqrtf(vdot(v, v).scalar())); }
+OP v3<F> vnormalize(v3<F> v) { return v / vlength(v); }
 
 OP v3<F> vmax(v3<F> a, v3<F> b) { return v3<F>(max(a.m_x, b.m_x), max(a.m_y, b.m_y), max(a.m_z, b.m_z)); }
 OP v3<F> vmin(v3<F> a, v3<F> b) { return v3<F>(min(a.m_x, b.m_x), min(a.m_y, b.m_y), min(a.m_z, b.m_z)); }
+OP v3<F> vmaxcomp(v3<F> u) { return v3<F>(max(max(u.m_x, u.m_y), u.m_z)); }
 
 OP v3<F> vabs(v3<F> v)
 {
   return v3<F>(abs(v.m_x), abs(v.m_y), abs(v.m_z));
-}
-
-
-// Debug output
-OP QDebug operator<<(QDebug dbg, v3<F> p)
-{
-  dbg.nospace() << "(" << p.m_x << "," << p.m_y << "," << p.m_z << ")";
-  return dbg.space();
 }
 
 #undef OP

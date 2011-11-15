@@ -10,7 +10,7 @@ SOURCES += main.cpp\
            FlatCamera.cpp \
            Renderer.cpp \
            SceneWidget.cpp \
-    src/qviewer/MyScene.cpp
+           MyScene.cpp
 
 HEADERS += v3_gen.h \
            float3.h \
@@ -19,21 +19,25 @@ HEADERS += v3_gen.h \
            FlatCamera.h \
            Renderer.h \
            SceneWidget.h \
-    src/qviewer/MyScene.h
+           MyScene.h
 
 win32 {
   DEFINES += _USE_MATH_DEFINES
   QMAKE_CXXFLAGS += /openmp /fp:fast /GL
-  release {
+  !debug {
     QMAKE_CXXFLAGS += /Ox /Ot /Ob1 /Oi /GS-
   }
 
-  QMAKE_LFLAGS += /LTCG
+  QMAKE_LFLAGS += /arch:AVX /LTCG
 }
 
 unix {
-  QMAKE_CXXFLAGS += -msse4 -march=corei7 -fopenmp -flto -Ofast -fno-exceptions -fno-rtti
-  QMAKE_LFLAGS += /arch:AVX -fopenmp
+  QMAKE_CXXFLAGS += -msse4 -fopenmp -fno-exceptions -fno-rtti
+  !debug {
+    QMAKE_CXXFLAGS += -flto -Ofast
+  }
+
+  QMAKE_LFLAGS += -fopenmp
 }
 
 

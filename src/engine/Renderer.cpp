@@ -133,7 +133,7 @@ void Renderer::Scene::reflectRefract(Renderer::Pixel &pix, int depth, bool inner
   {
     Pixel tmp;
     float3 newRay = k*pix.ray + (k*cos1 - cos2)*pix.normal;
-    renderPixel(tmp, pix.pos+0.001*pix.ray, newRay, depth-1, !inner);
+    renderPixel(tmp, pix.pos + 0.001f*pix.ray, newRay, depth-1, !inner);
     pix.refracted = tmp.blend();
     pix.steps += tmp.steps;
   }

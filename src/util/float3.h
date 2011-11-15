@@ -19,7 +19,7 @@
 //# define USE_DOUBLE
 
 # include "v3_gen.h"
-#  ifdef USE_DOUBLE
+# ifdef USE_DOUBLE
 #   define float double
 # endif
 typedef v3<float> float3;

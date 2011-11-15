@@ -46,7 +46,18 @@ static QRgb blend_aux(const Renderer::Pixel &p)
   static const float maxVal = 1000;
   float hblend = qBound(float(0.0), float(p.steps), maxVal)/maxVal;
 #endif
-  return qRgb(0, hblend*255, 0);
+  //return qRgb(0, hblend*255, 0);
+  return vec2rgb(float3(p.reflect));
+
+  //return vec2rgb(vabs(p.normal));
+  //return vec2rgb(p.diffuse);
+
+  /*
+  float z_norm = qBound(0.0f, log10f(p.z), 2.0f)/2.0f;
+  return qRgb(255*z_norm, 255*z_norm, 255*z_norm);
+  */
+
+  //return vec2rgb(float3(p.ambientOcclusion));
 }
 
 void SceneWidget::render(float phase)

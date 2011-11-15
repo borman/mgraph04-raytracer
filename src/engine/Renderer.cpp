@@ -15,11 +15,6 @@ static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceFie
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist);
 static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceField dist, const float3 &ray);
 
-static inline float3 diffuseBRDF(const float3 &normal, const float3 &eye, const float3 &light)
-{
-  return vdot(normal, vnormalize(eye+light));
-}
-
 static inline float3 reflect(float3 ray, float3 normal)
 {
   return ray - (float(2.0)*vdot(ray, normal))*normal;
@@ -34,6 +29,12 @@ static inline bool refract(float3 ray, float3 normal, float k, float3 &newRay)
   float3 cos_phi2 = vsqrt(float3(1.0f) - sin2_phi2);
   newRay = k*ray + (k*cos_phi1 - cos_phi2)*normal;
   return true;
+}
+
+static inline float3 diffuseBRDF(const float3 &normal, const float3 &eye, const float3 &light)
+{
+  // Blinn:
+  return vdot(normal, vnormalize(eye+light));
 }
 
 float3 Renderer::Pixel::blend() const
@@ -82,26 +83,38 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float3 origin, float3 ra
     pix.diffuse *= mat.diffuse;
     pix.specular *= mat.specular;
 
-    if (depth>0 && mat.reflect>1e-4f)
+    if (depth>0 && (mat.reflect>1e-4f || mat.refract > 1e-4f))
     {
-      Pixel tmp;
-      float3 newRay = reflect(ray, pix.normal);
-      renderPixel(tmp, pix.pos, newRay, depth-1, inner);
-      pix.reflected = tmp.blend();
-      pix.reflect = mat.reflect;
-      pix.steps += tmp.steps;
-    }
-
-    if (depth>0 && mat.refract>1e-4f)
-    {
-      Pixel tmp;
-      float k = mat.refractionIndex;
-      float3 newRay;
-      if (refract(ray, pix.normal, inner? 1.0f/k : k, newRay))
+      // Compute Fresnel coefficients
+      float k = inner? 1.0f/mat.refractionIndex : mat.refractionIndex;
+      float cos1 = vdot(-ray, pix.normal).scalar();
+      float cos2s = 1.0f - k*k*(1.0f - cos1*cos1);
+      float cos2 = 0.0f;
+      pix.reflect = 1.0f;
+      if (cos2s > 0.0f)
       {
+        cos2 = sqrt(cos2s);
+        pix.reflect = 0.5f * (sqr((k*cos1 - cos2)/(k*cos1 + cos2)) + sqr((k*cos2 - cos1)/(k*cos2 + cos1)));
+      }
+      pix.refract = 1.0f - pix.reflect;
+      pix.reflect *= mat.reflect;
+      pix.refract *= mat.refract;
+
+      if (pix.reflect>1e-4f)
+      {
+        Pixel tmp;
+        float3 newRay = reflect(ray, pix.normal);
+        renderPixel(tmp, pix.pos, newRay, depth-1, inner);
+        pix.reflected = tmp.blend();
+        pix.steps += tmp.steps;
+      }
+
+      if (pix.refract>1e-4f)
+      {
+        Pixel tmp;
+        float3 newRay = k*ray + (k*cos1 - cos2)*pix.normal;
         renderPixel(tmp, pix.pos+0.01*ray, newRay, depth-1, !inner);
         pix.refracted = tmp.blend();
-        pix.refract = mat.refract;
         pix.steps += tmp.steps;
       }
     }
@@ -177,13 +190,13 @@ static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceFie
 
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist)
 {
-  static const float delta = 0.07f;
+  static const float delta = 0.01f;
   static const float blend = 1.0f;
   static const int iter = 10;
 
   float ao = 0;
   for (int i=iter; i>0; i--)
-    ao = ao/2 + (i*delta - dist(point + (i*delta)*normal));
+    ao = ao/2 + max(0.0f, (i*delta - dist(point + (i*delta)*normal)));
 
   return 1 - blend*ao;
 }

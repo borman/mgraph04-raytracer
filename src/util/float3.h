@@ -20,4 +20,7 @@ typedef v3<float> float3;
 
 static inline float3 vbound(float3 min, float3 v, float3 max) { return vmin(vmax(min, v), max); }
 
+template<typename T>
+static inline T sqr(T u) { return u*u; }
+
 #endif // FLOAT3_H

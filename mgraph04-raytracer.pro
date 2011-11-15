@@ -23,12 +23,12 @@ HEADERS += v3_gen.h \
 
 win32 {
   DEFINES += _USE_MATH_DEFINES
-  QMAKE_CXXFLAGS += /openmp /fp:fast /GL
+  QMAKE_CXXFLAGS += /openmp /fp:fast /GL /arch:AVX
   !debug {
     QMAKE_CXXFLAGS += /Ox /Ot /Ob1 /Oi /GS-
   }
 
-  QMAKE_LFLAGS += /arch:AVX /LTCG
+  QMAKE_LFLAGS += /LTCG
 }
 
 unix {

@@ -13,16 +13,17 @@ public:
   explicit SceneWidget(Renderer::Scene *scene, QWidget *parent = 0);
   QSize sizeHint() const;
 public slots:
-  void setPhase(int phase) { m_phase = phase; update(); }
+  void setPhase(int phase);
 protected:
   void paintEvent(QPaintEvent *);
+  void mouseDoubleClickEvent(QMouseEvent *);
 private:
-  void render(float phase);
+  void render();
 
   Renderer::Scene *m_scene;
-  float m_phase;
   QImage m_image;
   QImage m_aux;
+  bool m_needRender;
 };
 
 #endif // SCENEWIDGET_H

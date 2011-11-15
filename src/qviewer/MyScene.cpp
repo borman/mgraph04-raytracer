@@ -64,7 +64,11 @@ static int sceneMat(float3 p)
 
 static float3 envColor(float3 p)
 {
-  return vabs(vcross(p, float3(1.0f, 1.0f, 1.0f)));
+  float phi = acos(p.z()/vlength(p).scalar());
+  float theta = atan2(p.y(), p.x());
+  float3 checkers = float3((int(abs(phi * 8/M_PI))%2) ^ (int(abs(theta * 8/M_PI))%2));
+  float3 colors = vabs(vcross(p, float3(1.0f, 1.0f, 1.0f)));
+  return checkers * colors;
 }
 
 
@@ -94,8 +98,8 @@ MyScene::MyScene()
     mat.diffuse = float3(0.3f, 0.4f, 0.5);
     mat.specular = float3(1.0f, 1.0f, 1.0f);
     mat.shininess = 1000;
-    mat.reflect = 0.7f;
-    mat.refract = 0.7f;
+    mat.reflect = 0.5f;
+    mat.refract = 0.9f;
     mat.refractionIndex = 0.5f;
     materials.push_back(mat);
   }

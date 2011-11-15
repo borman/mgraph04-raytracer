@@ -15,13 +15,19 @@ SceneWidget::SceneWidget(Renderer::Scene *scene, QWidget *parent)
   : QWidget(parent),
     m_scene(scene),
     m_image(imgWidth, imgHeight, QImage::Format_ARGB32),
-    m_aux(imgWidth, imgHeight, QImage::Format_ARGB32)
+    m_aux(imgWidth, imgHeight, QImage::Format_ARGB32),
+    m_needRender(true)
 {
+  setPhase(0);
 }
 
 void SceneWidget::paintEvent(QPaintEvent *)
 {
-  render(m_phase*2*M_PI/1000);
+  if (m_needRender)
+  {
+    render();
+    m_needRender = false;
+  }
   QPainter p(this);
   p.drawImage(0, 0, m_image);
   p.drawImage(imgWidth+1, 0, m_aux);
@@ -60,24 +66,14 @@ static QRgb blend_aux(const Renderer::Pixel &p)
   //return vec2rgb(float3(p.ambientOcclusion));
 }
 
-void SceneWidget::render(float phase)
+void SceneWidget::render()
 {
-  float w = imgWidth;
-  float h = imgHeight;
-
-  float camr = 3;
-  float camx = cos(phase) * camr;
-  float camy = sin(phase) * camr;
-  float camz = 3.1 + 3*sin(phase);
-  m_scene->cam =  FlatCamera(float(M_PI/4.0), w/h,
-                             float3(camx, camy, camz),
-                             float3(0.0f, 0.0f, 1.5f),
-                             float3(0.0f, 0.0f, 1.0f));
-
   QTime time;
   time.start();
 
   Renderer::Pixel pix;
+  float w = imgWidth;
+  float h = imgHeight;
 #pragma omp parallel for private(pix)
   for (int y=0; y<imgHeight; y++)
     for (int x=0; x<imgWidth; x++)
@@ -94,4 +90,45 @@ void SceneWidget::render(float phase)
 QSize SceneWidget::sizeHint() const
 {
   return QSize(imgWidth*2+1, imgHeight);
+}
+
+void SceneWidget::mouseDoubleClickEvent(QMouseEvent *)
+{
+  QImage img(imgWidth*4, imgHeight*4, QImage::Format_ARGB32);
+
+  QTime time;
+  time.start();
+
+  Renderer::Pixel pix;
+  float w = img.width();
+  float h = img.height();
+#pragma omp parallel for private(pix)
+  for (int y=0; y<img.height(); y++)
+    for (int x=0; x<img.width(); x++)
+    {
+      m_scene->renderPixel(pix, x/w, 1.0f-y/h);
+
+      ((QRgb *)img.scanLine(y))[x] = blend(pix);
+    }
+
+  qDebug() << "Big rendering:" << time.elapsed() << "msec";
+  img.save("render.png");
+  m_image = img.scaled(imgWidth, imgHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+  m_image.save("render_small.png");
+  update();
+}
+
+void SceneWidget::setPhase(int _phase)
+{
+  float phase = (_phase * 2 * M_PI)/1000;
+  float camr = 3;
+  float camx = cos(phase) * camr;
+  float camy = sin(phase) * camr;
+  float camz = 3.1 + 3*sin(phase);
+  m_scene->cam =  FlatCamera(float(M_PI/4.0), float(imgWidth)/float(imgHeight),
+                             float3(camx, camy, camz),
+                             float3(0.0f, 0.0f, 1.5f),
+                             float3(0.0f, 0.0f, 1.0f));
+  m_needRender = true;
+  update();
 }

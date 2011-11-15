@@ -10,7 +10,7 @@ class SceneWidget : public QWidget
 {
   Q_OBJECT
 public:
-  explicit SceneWidget(QWidget *parent = 0);
+  explicit SceneWidget(Renderer::Scene *scene, QWidget *parent = 0);
   QSize sizeHint() const;
 public slots:
   void setPhase(int phase) { m_phase = phase; update(); }
@@ -19,7 +19,7 @@ protected:
 private:
   void render(float phase);
 
-  Renderer::Scene m_scene;
+  Renderer::Scene *m_scene;
   float m_phase;
   QImage m_image;
   QImage m_aux;

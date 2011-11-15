@@ -6,12 +6,12 @@ FlatCamera::FlatCamera(float fov, float aspect,
 {
   m_pos = cam;
 
-  float3 camv = normalize(lookat - cam);
-  float3 right = normalize(cross(camv, _up));
-  float3 up = normalize(cross(right, camv));
+  float3 camv = vnormalize(lookat - cam);
+  float3 right = vnormalize(vcross(camv, _up));
+  float3 up = vnormalize(vcross(right, camv));
 
-  m_x = tanf(fov) * right;
-  m_y = (tanf(fov) / aspect) * up;
+  m_x = tan(fov) * right;
+  m_y = (tan(fov) / aspect) * up;
 
-  m_origin = camv - 0.5f*m_x - 0.5f*m_y;
+  m_origin = camv - float(0.5)*m_x - float(0.5)*m_y;
 }

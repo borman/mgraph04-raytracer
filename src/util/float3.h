@@ -2,6 +2,7 @@
 #define FLOAT3_H
 
 #define USE_SSE_VECTORS
+//#define USE_DOUBLE
 
 #ifdef USE_SSE_VECTORS
 
@@ -10,6 +11,9 @@
 #else
 
 #include "v3_gen.h"
+#ifdef USE_DOUBLE
+# define float double
+#endif
 typedef v3<float> float3;
 
 #endif // USE_SSE_VECTORS

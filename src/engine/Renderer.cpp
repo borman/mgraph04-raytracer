@@ -17,17 +17,23 @@ static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceFiel
 
 static inline float3 diffuseBRDF(const float3 &normal, const float3 &eye, const float3 &light)
 {
-  return dot(normal, normalize(eye+light));
+  return vdot(normal, vnormalize(eye+light));
 }
 
 static inline float3 reflect(float3 ray, float3 normal)
 {
-  return ray - (2*dot(ray, normal))*normal;
+  return ray - (float(2.0)*vdot(ray, normal))*normal;
 }
 
-static inline float3 refract(float3 ray, float3 normal, float k)
+static inline bool refract(float3 ray, float3 normal, float k, float3 &newRay)
 {
-  return k*cross(ray, normal) + dot(ray, normal)*normal;
+  float3 cos_phi1 = vdot(-ray, normal);
+  float3 sin2_phi2 = (k*k) * (float3(1.0f) - cos_phi1*cos_phi1);
+  if (sin2_phi2.scalar() > 1.0f)
+    return false; // Total internal reflection
+  float3 cos_phi2 = vsqrt(float3(1.0f) - sin2_phi2);
+  newRay = k*ray + (k*cos_phi1 - cos_phi2)*normal;
+  return true;
 }
 
 float3 Renderer::Pixel::blend() const
@@ -60,8 +66,8 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float3 origin, float3 ra
     for (int i=0; i<lights.size(); i++)
     {
       float3 lvec = lights[i].pos - pix.pos;
-      float dl = length(lvec).scalar();
-      lvec = normalize(lvec);
+      float dl = vlength(lvec).scalar();
+      lvec = vnormalize(lvec);
 
       int steps = 0;
       float att = 1.0f / (1e-4f + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
@@ -79,19 +85,25 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float3 origin, float3 ra
     if (depth>0 && mat.reflect>1e-4f)
     {
       Pixel tmp;
-      renderPixel(tmp, pix.pos, reflect(ray, pix.normal), depth-1, inner);
+      float3 newRay = reflect(ray, pix.normal);
+      renderPixel(tmp, pix.pos, newRay, depth-1, inner);
       pix.reflected = tmp.blend();
       pix.reflect = mat.reflect;
       pix.steps += tmp.steps;
     }
 
-    if (depth > 0 && mat.refract>1e-4f)
+    if (depth>0 && mat.refract>1e-4f)
     {
       Pixel tmp;
-      renderPixel(tmp, pix.pos, refract(ray, pix.normal, (inner? -1: 1) * mat.refractionIndex), depth-1, !inner);
-      pix.refracted = tmp.blend();
-      pix.refract = mat.refract;
-      pix.steps += tmp.steps;
+      float k = mat.refractionIndex;
+      float3 newRay;
+      if (refract(ray, pix.normal, inner? 1.0f/k : k, newRay))
+      {
+        renderPixel(tmp, pix.pos+0.01*ray, newRay, depth-1, !inner);
+        pix.refracted = tmp.blend();
+        pix.refract = mat.refract;
+        pix.steps += tmp.steps;
+      }
     }
   }
   else
@@ -115,7 +127,7 @@ inline static float3 estimateNormal(DistanceField dist, const float3 &p)
   float dy = dist(p + float3(0, eps, 0)) - dist(p - float3(0, eps, 0));
   float dz = dist(p + float3(0, 0, eps)) - dist(p - float3(0, 0, eps));
 
-  return normalize(float3(dx, dy, dz));
+  return vnormalize(float3(dx, dy, dz));
 }
 
 // Ray marching tracer
@@ -125,7 +137,7 @@ static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField 
   static const float hitThreshold = 1e-4f;
   static const float missThreshold = 100.0f;
 
-  float z = 0.001f;
+  float z = 3e-4f;
   int steps=0;
   for (steps=0; steps<maxSteps && z<missThreshold; steps++)
   {

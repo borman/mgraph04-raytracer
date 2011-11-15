@@ -11,7 +11,7 @@ public:
              const float3 &cam, const float3 &lookat, const float3 &up);
 
   // map (x, y) to a ray; x and y vary from 0.0 to 1.0
-  float3 project(float x, float y) const { return normalize(m_origin + x*m_x + y*m_y); }
+  float3 project(float x, float y) const { return vnormalize(m_origin + x*m_x + y*m_y); }
   float3 pos() const { return m_pos; }
 private:
   float3 m_pos;

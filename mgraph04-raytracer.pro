@@ -9,7 +9,8 @@ INCLUDEPATH += src/util src/engine
 SOURCES += main.cpp\
            FlatCamera.cpp \
            Renderer.cpp \
-           SceneWidget.cpp
+           SceneWidget.cpp \
+    src/qviewer/MyScene.cpp
 
 HEADERS += v3_gen.h \
            float3.h \
@@ -17,12 +18,15 @@ HEADERS += v3_gen.h \
            matrix.h \
            FlatCamera.h \
            Renderer.h \
-           SceneWidget.h
+           SceneWidget.h \
+    src/qviewer/MyScene.h
 
 win32 {
   DEFINES += _USE_MATH_DEFINES
-  QMAKE_CXXFLAGS += /openmp /fp:fast /Ox /Ot /Ob1 /Oi /GS- /GL
-  QMAKE_CXXFLAGS += /favor:EM64T /Gr
+  QMAKE_CXXFLAGS += /openmp /fp:fast /GL
+  release {
+    QMAKE_CXXFLAGS += /Ox /Ot /Ob1 /Oi /GS-
+  }
 
   QMAKE_LFLAGS += /LTCG
 }
@@ -31,5 +35,7 @@ unix {
   QMAKE_CXXFLAGS += -msse4 -march=corei7 -fopenmp -flto -Ofast -fno-exceptions -fno-rtti
   QMAKE_LFLAGS += -fopenmp
 }
+
+
 
 

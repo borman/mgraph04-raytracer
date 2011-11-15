@@ -1,7 +1,11 @@
 #ifndef FLOAT3_SSE_H
 #define FLOAT3_SSE_H
 
-#include "smmintrin.h"
+#ifdef USE_SSE4
+# include "smmintrin.h"
+#else
+# include "emmintrin.h"
+#endif
 
 class float3
 {

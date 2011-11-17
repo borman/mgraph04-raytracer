@@ -29,6 +29,12 @@ typedef v3<float> float3;
 // Implementation-agnostic functions
 
 static inline float3 vbound(float3 min, float3 v, float3 max) { return vmin(vmax(min, v), max); }
+static inline float3 vsqlength(float3 v) { return vdot(v, v); }
+
+static inline float3 vreflect(float3 ray, float3 normal)
+{
+  return ray - (float(2.0)*vdot(ray, normal))*normal;
+}
 
 template<typename T>
 static inline T sqr(T u) { return u*u; }

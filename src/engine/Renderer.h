@@ -20,12 +20,12 @@ namespace Renderer
     float3 specular;
     float3 reflected;
     float3 refracted;
+    float3 reflect;
+    float3 refract;
 
     float z; // Depth buffer
     float alpha;
     float ambientOcclusion;
-    float reflect;
-    float refract;
     int steps;
     int matId;
 
@@ -41,15 +41,35 @@ namespace Renderer
     float attConst, attLinear, attQuad;
   };
 
+  typedef float3 (*ShaderFunc)(float3, float3, float3, const struct Material &);
+
   struct Material
   {
-    float3 ambient;
-    float3 diffuse;
-    float3 specular;
+    Material()
+      : diffuseShader(diffuseLambert), specularShader(specularBlinn),
+        shininess(0.0f), reflect(0.0f), refract(0.0f), refractionIndex(1.0f) {}
+
+    // Basic shading props
+    float3 ambientColor;
+    float3 diffuseColor;
+    float3 specularColor;
+    ShaderFunc diffuseShader;
+    ShaderFunc specularShader;
+
+    // Shader-specific shading props
     float shininess;
-    float reflect;
-    float refract;
+
+    // Optical effects
     float refractionIndex;
+    float3 reflect;
+    float3 refract;
+
+    // Predefined shaders
+    static float3 diffuseLambert(float3 normal, float3 eye, float3 light, const Material &mat);
+    static float3 diffuseOrenNayar(float3 normal, float3 eye, float3 light, const Material &mat);
+    static float3 specularPhong(float3 normal, float3 eye, float3 light, const Material &mat);
+    static float3 specularBlinn(float3 normal, float3 eye, float3 light, const Material &mat);
+    static float3 specularCookTorrance(float3 normal, float3 eye, float3 light, const Material &mat);
   };
 
   typedef float (*DistanceField)(float3);

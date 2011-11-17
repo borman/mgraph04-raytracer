@@ -7,7 +7,7 @@ using namespace Renderer;
 using std::min;
 using std::max;
 
-static const Pixel background = { float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), FLT_MAX, 0.0f, 0.0f, 0.0f, 0.0f, 0, 0 };
+static const Pixel background = { float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), FLT_MAX, 0.0f, 0.0f, 0, 0 };
 
 inline static float3 estimateNormal(DistanceField dist, const float3 &z);
 static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField dist, int &_steps);
@@ -15,16 +15,6 @@ static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceFie
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist);
 static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceField dist, const float3 &ray);
 
-static inline float3 reflect(float3 ray, float3 normal)
-{
-  return ray - (float(2.0)*vdot(ray, normal))*normal;
-}
-
-static inline float3 diffuseBRDF(const float3 &normal, const float3 &eye, const float3 &light)
-{
-  // Blinn:
-  return vdot(normal, vnormalize(eye+light));
-}
 
 float3 Renderer::Pixel::blend() const
 {
@@ -52,7 +42,7 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float3 origin, float3 ra
     const Material &mat = materials[pix.matId];
 
     shade(pix, inner);
-    if (depth>0 && (mat.reflect>1e-4f || mat.refract > 1e-4f))
+    if (depth>0 && (vsqlength(mat.reflect).scalar()>1e-4f || vsqlength(mat.refract).scalar() > 1e-4f))
       reflectRefract(pix, depth, inner);
   }
   else
@@ -67,7 +57,7 @@ void Renderer::Scene::shade(Renderer::Pixel &pix, bool inner) const
   const Material &mat = materials[pix.matId];
   DistanceField dist = inner? innerSceneDist : sceneDist;
 
-  pix.ambient = mat.ambient;
+  pix.ambient = mat.ambientColor;
   pix.ambientOcclusion = ambientOcclusion(pix.pos, pix.normal, dist);
   pix.diffuse = float3(0.0f, 0.0f, 0.0f);
   pix.specular = float3(0.0f, 0.0f, 0.0f);
@@ -80,15 +70,15 @@ void Renderer::Scene::shade(Renderer::Pixel &pix, bool inner) const
     int steps = 0;
     float att = 1.0f / (1e-4f + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
     float power = rayMarchShadow(pix.pos, lvec, dist, dl, steps) * att;
-    float diffuse = diffuseBRDF(pix.normal, -pix.ray, lvec).scalar();
-    float specular = powf(diffuse, mat.shininess);
+    float3 diffuse = mat.diffuseShader(pix.normal, -pix.ray, lvec, mat);
+    float3 specular = mat.specularShader(pix.normal, -pix.ray, lvec, mat);
 
     pix.steps += steps;
     pix.diffuse += power*diffuse*lights[i].color;
     pix.specular += power*specular*lights[i].color;
   }
-  pix.diffuse *= mat.diffuse;
-  pix.specular *= mat.specular;
+  pix.diffuse *= mat.diffuseColor;
+  pix.specular *= mat.specularColor;
 }
 
 void Renderer::Scene::reflectRefract(Renderer::Pixel &pix, int depth, bool inner) const
@@ -97,39 +87,34 @@ void Renderer::Scene::reflectRefract(Renderer::Pixel &pix, int depth, bool inner
   DistanceField dist = inner? innerSceneDist : sceneDist;
 
   // Compute Fresnel coefficients
-  float k = inner? 1.0f/mat.refractionIndex : mat.refractionIndex; // FIXME: handle actual index relation
+  float k = inner? mat.refractionIndex : 1.0f/mat.refractionIndex; // FIXME: handle actual index relation
 
   // cos1: falling light angle; cos2: refracted light angle
   float cos1 = vdot(-pix.ray, pix.normal).scalar();
   float cos2s = 1.0f - k*k*(1.0f - cos1*cos1);
   float cos2 = 0.0f;
 
-  pix.reflect = 1.0f;
+  float kReflect = 1.0f;
   if (cos2s > 0.0f)
   {
     cos2 = sqrt(cos2s);
-    pix.reflect = 0.5f * (sqr((k*cos1 - cos2)/(k*cos1 + cos2)) + sqr((k*cos2 - cos1)/(k*cos2 + cos1)));
+    kReflect = 0.5f * (sqr((k*cos1 - cos2)/(k*cos1 + cos2)) + sqr((k*cos2 - cos1)/(k*cos2 + cos1)));
   }
-  pix.refract = (1.0f - pix.reflect) * mat.refract;
-  pix.reflect = (1.0f - pix.refract) * mat.reflect;
-  /*
-  pix.refract = 1.0f - pix.reflect;
-  pix.reflect *= mat.reflect;
-  pix.refract *= mat.refract;
-  */
+  pix.refract = (1.0f - kReflect) * mat.refract;
+  pix.reflect = kReflect * mat.reflect;
 
   // Reflected ray
-  if (pix.reflect>1e-4f)
+  if (vsqlength(pix.reflect).scalar()>1e-4f)
   {
     Pixel tmp;
-    float3 newRay = reflect(pix.ray, pix.normal);
+    float3 newRay = vreflect(pix.ray, pix.normal);
     renderPixel(tmp, pix.pos, newRay, depth-1, inner);
     pix.reflected = tmp.blend();
     pix.steps += tmp.steps;
   }
 
   // Refracted ray
-  if (pix.refract>1e-4f)
+  if (vsqlength(pix.refract).scalar()>1e-4f)
   {
     Pixel tmp;
     float3 newRay = k*pix.ray + (k*cos1 - cos2)*pix.normal;
@@ -204,7 +189,7 @@ static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceFie
 
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist)
 {
-  static const float delta = 0.01f;
+  static const float delta = 0.1f;
   static const float blend = 1.0f;
   static const int iter = 10;
 
@@ -213,4 +198,40 @@ static float ambientOcclusion(const float3 &point, const float3 &normal, Distanc
     ao = ao/2 + max(0.0f, (i*delta - dist(point + (i*delta)*normal)));
 
   return 1 - blend*ao;
+}
+
+float3 Renderer::Material::diffuseLambert(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+{
+  return vdot(light, normal);
+}
+
+float3 Renderer::Material::diffuseOrenNayar(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+{
+  /*
+  float a = 1.0f - 0.5f*sqr(mat.roughness)/(sqr(mat.roughness) + 0.33);
+  float b = 0.45f*sqr(mat.roughness)/(sqr(mat.roughness) + 0.09);
+  float thetai = acosf(vdot(light, normal).scalar());
+  float thetar = acosf(vdot(eye, normal).scalar());
+  float alpha = max(thetai, thetar);
+  float beta = min(thetai, thetar);
+  float dphi = atan2f(
+  */
+  return float3(0.0f);
+}
+
+float3 Renderer::Material::specularPhong(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+{
+  float3 k = vdot(vreflect(light, normal), eye);
+  return float3(powf(k.scalar(), mat.shininess));
+}
+
+float3 Renderer::Material::specularBlinn(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+{
+  float3 k = vdot(vnormalize(eye+light), normal);
+  return float3(powf(k.scalar(), mat.shininess));
+}
+
+float3 Renderer::Material::specularCookTorrance(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+{
+  return float3(0.0f);
 }

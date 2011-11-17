@@ -1,10 +1,11 @@
-QT       += core gui
+QT += core gui
 
 TARGET = mgraph04-raytracer
 TEMPLATE = app
 
-VPATH += src/util src/engine src/qviewer
-INCLUDEPATH += src/util src/engine
+VPATH += src/util src/engine src/qviewer src/scenes
+DEPENDPATH += src/util src/engine src/qviewer src/scenes
+INCLUDEPATH += src/util src/engine src/scenes
 
 SOURCES += main.cpp\
            FlatCamera.cpp \
@@ -19,7 +20,10 @@ HEADERS += v3_gen.h \
            FlatCamera.h \
            Renderer.h \
            SceneWidget.h \
-           MyScene.h
+           MyScene.h \
+           MyScene_sphere_cube.h \
+           MyScene_terrain.h \
+           MyScene_shader_test.h
 
 win32 {
   DEFINES += _USE_MATH_DEFINES
@@ -39,6 +43,8 @@ unix {
 
   QMAKE_LFLAGS += -fopenmp
 }
+
+
 
 
 

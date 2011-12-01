@@ -10,8 +10,11 @@ using std::max;
 static const Pixel background = { float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), FLT_MAX, 0.0f, 0.0f, 0, 0 };
 
 inline static float3 estimateNormal(DistanceField dist, const float3 &z);
-static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField dist, int &_steps);
-static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceField dist, float maxz, int &_steps);
+static bool rayCast(const float3 &origin, const float3 &ray, DistanceField dist,
+                    float minz, float maxz,
+                    float &_z, float3 &_hit, float &_prox, int &_steps);
+static inline float rayCastShadow(const float3 &origin, const float3 &ray, DistanceField dist,
+                                  float maxz, int &_steps);
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist);
 static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceField dist, const float3 &ray);
 
@@ -32,10 +35,9 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float3 origin, float3 ra
 
   pix = background;
   pix.ray = ray;
-  pix.z = rayMarchHit(origin, ray, dist, pix.steps);
-  if (pix.z < FLT_MAX)
+  float _prox; // unused
+  if (rayCast(origin, ray, dist, 1e-2f, 100.f, pix.z, pix.pos, _prox, pix.steps))
   {
-    pix.pos = origin + pix.z*ray;
     pix.normal = estimateNormal(dist, pix.pos);
     pix.alpha = 1.0f;
     pix.matId = matId(pix.pos);
@@ -69,7 +71,7 @@ void Renderer::Scene::shade(Renderer::Pixel &pix, bool inner) const
 
     int steps = 0;
     float att = 1.0f / (1e-4f + lights[i].attConst + lights[i].attLinear*dl + lights[i].attQuad*dl*dl);
-    float power = rayMarchShadow(pix.pos, lvec, dist, dl, steps) * att;
+    float power = rayCastShadow(pix.pos, lvec, dist, dl, steps) * att;
     float3 diffuse = mat.diffuseShader(pix.normal, -pix.ray, lvec, mat);
     float3 specular = mat.specularShader(pix.normal, -pix.ray, lvec, mat);
 
@@ -143,48 +145,50 @@ inline static float3 estimateNormal(DistanceField dist, const float3 &p)
 
 // Ray marching tracer
 // TODO: detect material boundary as a hit?
-static float rayMarchHit(const float3 &origin, const float3 &ray, DistanceField dist, int &_steps)
+static bool rayCast(const float3 &origin, const float3 &ray, DistanceField dist,
+                    float minz, float maxz,
+                    float &_z, float3 &_hit, float &_prox, int &_steps)
 {
+  static const float minStepK = 1e-5;
+  static const float maxStepBase = 1e-1;
+  static const float maxStepK = 1e-1;
+  static const float epsK = 1e-5;
   static const int maxSteps = 1000;
-  static const float hitThreshold = 1e-4f;
-  static const float missThreshold = 100.0f;
 
-  float z = 3e-4f;
-  int steps=0;
-  for (steps=0; steps<maxSteps && z<missThreshold; steps++)
+  float z = minz;
+  int steps;
+  float3 p;
+  float prox = FLT_MAX;
+  bool isHit = false;
+
+  for (steps=0; steps<maxSteps && z<maxz; steps++)
   {
-    float d = dist(origin + z*ray);
-    if (d < hitThreshold)
+    p = origin + z*ray;
+    float d = dist(p);
+    if (d < epsK * z)
+    {
+      isHit = true;
+      prox = 0;
       break;
-    z += d;
+    }
+    prox = min(prox, d/z);
+    z += max(minStepK * z, min(d, maxStepBase + maxStepK * z));
   }
 
+  _z = z;
+  _hit = p;
+  _prox = prox;
   _steps += steps;
-  if (z > missThreshold)
-    return FLT_MAX;
-  else
-    return z;
+  return isHit;
 }
 
-static float rayMarchShadow(const float3 &origin, const float3 &ray, DistanceField dist, float maxz, int &_steps)
+static inline float rayCastShadow(const float3 &origin, const float3 &ray, DistanceField dist,
+                                  float maxz, int &_steps)
 {
-  static const float k = 5; // Shadow smoothness
-  static const int maxSteps = 100;
-  int steps = 0;
-  float dens = 1.0f;
-  for (float z = 0.01f; steps<maxSteps && z<maxz; steps++)
-  {
-    float d = dist(origin + z*ray);
-    if (d < 1e-5f) // Obstacle found
-    {
-      _steps += steps;
-      return 0.0f;
-    }
-    dens = min(dens, k*d/z);
-    z += d;
-  }
-  _steps += steps;
-  return dens;
+  float z=0, prox=0;
+  float3 p;
+  rayCast(origin, ray, dist, 1e-2, maxz, z, p, prox, _steps);
+  return prox;
 }
 
 static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist)

@@ -2,8 +2,9 @@
 
 static const float3 box1Pos(0.0f, 0.0f, -0.5f);
 static const float3 box1Size(5.0f, 5.0f, 0.5f);
+static const float3 box2Size(0.1f, 0.1f, 0.1f);
 static const int nSpheres = 5;
-static const float radSpheres = 0.7f;
+static const float radSpheres = 2.0f;
 static float3 spherePos[nSpheres];
 static float sphereRad[nSpheres];
 
@@ -22,6 +23,7 @@ static float sceneDist(float3 p)
 
 static float innerSceneDist(float3 p)
 {
+  //return min(-sceneDist(p), box(p-spherePos[4], box2Size).scalar());
   return -sceneDist(p);
 }
 
@@ -51,7 +53,7 @@ MyScene::MyScene()
   for (int i=0; i<nSpheres; i++)
   {
     //float r = sqrt(1.0f * float(i+1)/nSpheres);
-    float r = 0.3f;
+    float r = 1.0f;
     float phi = 2*M_PI * float(i)/nSpheres;
     spherePos[i] = float3(radSpheres*cos(phi), radSpheres*sin(phi), r);
     sphereRad[i] = r;
@@ -69,8 +71,8 @@ MyScene::MyScene()
     mat.diffuseColor = float3(1.0f, 1.0f, 1.0f);
     mat.specularColor = float3(1.0f, 1.0f, 1.0f);
     mat.shininess = 10;
-    mat.reflect = 0.0f;
-    mat.refract = 0.0f;
+    mat.reflect = float3(0.0f);
+    mat.refract = float3(0.0f);
     mat.refractionIndex = 1.0f;
     materials.push_back(mat);
 
@@ -82,8 +84,8 @@ MyScene::MyScene()
   materials[1].ambientColor = float3(0.0f);
   materials[1].diffuseColor = float3(0.0f);
   materials[1].shininess = 1000;
-  materials[1].reflect = 1.0f;
-  materials[1].refract = 0.0f;
+  materials[1].reflect = float3(1.0f);
+  materials[1].refract = float3(0.0f);
   materials[1].refractionIndex = 8.0f;
 
   // Phong test
@@ -96,12 +98,12 @@ MyScene::MyScene()
   materials[3].ambientColor = 0.1f * materials[3].diffuseColor;
 
   // Something glassy
-  materials[4].ambientColor = float3(0.0f, 0.0f, 0.2f);
+  materials[4].ambientColor = float3(0.0f, 0.0f, 0.0f);
   materials[4].diffuseColor = float3(0.0f);
   materials[4].shininess = 1000;
-  materials[4].reflect = 1.0f;
-  materials[4].refract = 0.5f;
-  materials[4].refractionIndex = 2.3f;
+  materials[4].reflect = float3(1.0f);
+  materials[4].refract = float3(0.9f, 0.9f, 1.0f);
+  materials[4].refractionIndex = 1.1f;
 
   // Oren-Nayar-Blinn test
   materials[5].diffuseColor = float3(0.0f, 0.9f, 0.0f);

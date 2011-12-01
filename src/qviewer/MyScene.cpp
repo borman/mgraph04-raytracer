@@ -28,6 +28,6 @@ static inline float3 subtract(float3 a, float3 b)
 
 // Scene
 
-#include "MyScene_sphere_cube.h"
+//#include "MyScene_sphere_cube.h"
 //#include "MyScene_terrain.h"
-//#include "MyScene_shader_test.h"
+#include "MyScene_shader_test.h"

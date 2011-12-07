@@ -91,7 +91,7 @@ namespace Renderer
     FlatCamera cam;
 
     void renderPixel(Pixel &pix, float x, float y) const;
-    void renderPixel(Pixel &pix, float3r origin, float3r ray, int depth = 4, bool inner = false) const;
+    void renderPixel(Pixel &pix, float3r origin, float3r ray, int depth = 6, bool inner = false) const;
 
     void shade(Pixel &pix, bool inner) const;
     void reflectRefract(Pixel &pix, int depth, bool inner) const;

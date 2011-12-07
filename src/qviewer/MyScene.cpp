@@ -21,6 +21,11 @@ static inline float3 unite(float3r a, float3r b)
   return vmin(a, b);
 }
 
+static inline float3 intersect(float3r a, float3r b)
+{
+  return vmax(a, b);
+}
+
 static inline float3 subtract(float3r a, float3r b)
 {
   return vmax(a, -b);

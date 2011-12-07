@@ -125,7 +125,7 @@ void SceneWidget::setPhase(int _phase)
   float camr = 3;
   float camx = cos(phase) * camr;
   float camy = sin(phase) * camr;
-  float camz = 3.1 + 3*sin(phase);
+  float camz = 3.1 + 1*sin(phase);
   m_scene->cam =  FlatCamera(float(M_PI/4.0), float(imgWidth)/float(imgHeight),
                              float3(camx, camy, camz),
                              float3(0.0f, 0.0f, 1.5f),

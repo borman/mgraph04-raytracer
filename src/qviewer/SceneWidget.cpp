@@ -30,10 +30,10 @@ void SceneWidget::paintEvent(QPaintEvent *)
   }
   QPainter p(this);
   p.drawImage(0, 0, m_image);
-  p.drawImage(imgWidth+1, 0, m_aux);
+  //p.drawImage(imgWidth+1, 0, m_aux);
 }
 
-static inline QRgb vec2rgb(float3 f)
+static inline QRgb vec2rgb(float3r f)
 {
   return qRgb(255*f.x(), 255*f.y(), 255*f.z());
 }
@@ -81,7 +81,7 @@ void SceneWidget::render()
       m_scene->renderPixel(pix, x/w, 1.0f-y/h);
 
       ((QRgb *)m_image.scanLine(y))[x] = blend(pix);
-      ((QRgb *)m_aux.scanLine(y))[x] = blend_aux(pix);
+      //((QRgb *)m_aux.scanLine(y))[x] = blend_aux(pix);
     }
 
   qDebug() << "Rendering:" << time.elapsed() << "msec";
@@ -89,7 +89,8 @@ void SceneWidget::render()
 
 QSize SceneWidget::sizeHint() const
 {
-  return QSize(imgWidth*2+1, imgHeight);
+  //return QSize(imgWidth*2+1, imgHeight);
+  return QSize(imgWidth, imgHeight);
 }
 
 void SceneWidget::mouseDoubleClickEvent(QMouseEvent *)
@@ -112,9 +113,9 @@ void SceneWidget::mouseDoubleClickEvent(QMouseEvent *)
     }
 
   qDebug() << "Big rendering:" << time.elapsed() << "msec";
-  img.save("render.png");
+  //img.save("render.png");
   m_image = img.scaled(imgWidth, imgHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-  m_image.save("render_small.png");
+  //m_image.save("render_small.png");
   update();
 }
 

@@ -8,7 +8,7 @@ static const float radSpheres = 2.0f;
 static float3 spherePos[nSpheres];
 static float sphereRad[nSpheres];
 
-static float sceneDist(float3 p)
+static float sceneDist(float3r p)
 {
   float3 box1 = box(p-box1Pos, box1Size);
 
@@ -21,13 +21,13 @@ static float sceneDist(float3 p)
   return scene.scalar();
 }
 
-static float innerSceneDist(float3 p)
+static float innerSceneDist(float3r p)
 {
   //return min(-sceneDist(p), box(p-spherePos[4], box2Size).scalar());
   return -sceneDist(p);
 }
 
-static int sceneMat(float3 p)
+static int sceneMat(float3r p)
 {
   for (int i=0; i<nSpheres; i++)
     if (vlength(p-spherePos[i]).scalar() - sphereRad[i] < 1e-4)
@@ -39,7 +39,7 @@ static const float3 blueSky(0.2f, 0.4f, 1.0f);
 static const float3 tintedSky(0.95f, 0.95f, 1.0f);
 static const float3 sunColor(1.0f, 1.0f, 0.8f);
 static const float3 sunPos(0.6f, 0.6f, 0.52f);
-static float3 envColor(float3 p)
+static float3 envColor(float3r p)
 {
   float k = max(0.0f, p.z()+0.3f);
   float s = max(0.0f, vdot(p, sunPos).scalar());
@@ -54,7 +54,7 @@ MyScene::MyScene()
   {
     //float r = sqrt(1.0f * float(i+1)/nSpheres);
     float r = 1.0f;
-    float phi = 2*M_PI * float(i)/nSpheres;
+    float phi = 2.0f*M_PI * float(i)/nSpheres;
     spherePos[i] = float3(radSpheres*cos(phi), radSpheres*sin(phi), r);
     sphereRad[i] = r;
   }
@@ -65,6 +65,8 @@ MyScene::MyScene()
   envColor = ::envColor;
 
   // Basement
+  nMaterials = nSpheres+1;
+  materials = (Renderer::Material *) malloc(sizeof(Renderer::Material) * nMaterials);
   {
     Renderer::Material mat;
     mat.ambientColor = float3(0.2f, 0.2f, 0.2f);
@@ -74,10 +76,9 @@ MyScene::MyScene()
     mat.reflect = float3(0.0f);
     mat.refract = float3(0.0f);
     mat.refractionIndex = 1.0f;
-    materials.push_back(mat);
 
-    for (int i=0; i<nSpheres; i++)
-      materials.push_back(mat);
+    for (int i=0; i<nMaterials; i++)
+      materials[i] = mat;
   }
 
   // Chromium
@@ -110,14 +111,14 @@ MyScene::MyScene()
   materials[5].ambientColor = 0.1f * materials[5].diffuseColor;
   //materials[5].diffuseShader = Renderer::Material::diffuseOrenNayar;
 
-  lights.push_back(
-        Renderer::Light(float3(10.0f, 10.0f, 10.0f),
-                        float3(1.0f, 1.0f, 1.0f),
-                        1.5f, 0.0f, 0.005f));
-  lights.push_back(
-        Renderer::Light(float3(-5.0f, 5.0f, 4.0f),
-                        float3(1.0f, 1.0f, 1.0f),
-                        5.0f, 0.0f, 0.05f));
+  nLights = 2;
+  lights = (Renderer::Light *) malloc(sizeof(Renderer::Light) * nLights);
+  lights[0] = Renderer::Light(float3(10.0f, 10.0f, 10.0f),
+                              float3(1.0f, 1.0f, 1.0f),
+                              1.5f, 0.0f, 0.005f);
+  lights[1] = Renderer::Light(float3(-5.0f, 5.0f, 4.0f),
+                              float3(1.0f, 1.0f, 1.0f),
+                              5.0f, 0.0f, 0.05f);
   /*
   lights.push_back(
         Renderer::Light(float3(-1.0f, -5.0f, 5.0f),

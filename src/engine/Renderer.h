@@ -34,14 +34,14 @@ namespace Renderer
 
   struct Light
   {
-    Light(const float3 &_pos=float3(), const float3 &_color=float3(), float _ac=1.0, float _al=0.0, float _aq=0.0)
+    Light(float3r _pos=float3(), float3r _color=float3(), float _ac=1.0, float _al=0.0, float _aq=0.0)
       : pos(_pos), color(_color), attConst(_ac), attLinear(_al), attQuad(_aq) {}
     float3 pos;
     float3 color;
     float attConst, attLinear, attQuad;
   };
 
-  typedef float3 (*ShaderFunc)(float3, float3, float3, const struct Material &);
+  typedef float3 (*ShaderFunc)(float3r, float3r, float3r, const struct Material &);
 
   struct Material
   {
@@ -65,16 +65,16 @@ namespace Renderer
     float3 refract;
 
     // Predefined shaders
-    static float3 diffuseLambert(float3 normal, float3 eye, float3 light, const Material &mat);
-    static float3 diffuseOrenNayar(float3 normal, float3 eye, float3 light, const Material &mat);
-    static float3 specularPhong(float3 normal, float3 eye, float3 light, const Material &mat);
-    static float3 specularBlinn(float3 normal, float3 eye, float3 light, const Material &mat);
-    static float3 specularCookTorrance(float3 normal, float3 eye, float3 light, const Material &mat);
+    static float3 diffuseLambert(float3r normal, float3r eye, float3r light, const Material &mat);
+    //static float3 diffuseOrenNayar(float3r normal, float3r eye, float3r light, const Material &mat);
+    static float3 specularPhong(float3r normal, float3r eye, float3r light, const Material &mat);
+    static float3 specularBlinn(float3r normal, float3r eye, float3r light, const Material &mat);
+    //static float3 specularCookTorrance(float3r normal, float3r eye, float3r light, const Material &mat);
   };
 
-  typedef float (*DistanceField)(float3);
-  typedef int (*MaterialFunc)(float3);
-  typedef float3 (*EnvironmentFunc)(float3);
+  typedef float (*DistanceField)(float3r);
+  typedef int (*MaterialFunc)(float3r);
+  typedef float3 (*EnvironmentFunc)(float3r);
 
   struct Scene
   {
@@ -83,12 +83,15 @@ namespace Renderer
     MaterialFunc matId;
     EnvironmentFunc envColor;
 
-    std::vector<Light> lights;
-    std::vector<Material> materials;
+    // MSVS std::vector cannot into alignment
+    Light *lights;
+    size_t nLights;
+    Material *materials;
+    size_t nMaterials;
     FlatCamera cam;
 
     void renderPixel(Pixel &pix, float x, float y) const;
-    void renderPixel(Pixel &pix, float3 origin, float3 ray, int depth = 4, bool inner = false) const;
+    void renderPixel(Pixel &pix, float3r origin, float3r ray, int depth = 4, bool inner = false) const;
 
     void shade(Pixel &pix, bool inner) const;
     void reflectRefract(Pixel &pix, int depth, bool inner) const;

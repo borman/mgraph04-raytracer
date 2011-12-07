@@ -11,9 +11,10 @@
 
 #ifdef USE_SSE_VECTORS
 // Use SSE4 instructions
-# define USE_SSE4
+//# define USE_SSE4
 
 # include "float3_sse.h"
+
 #else // USE_SSE_VECTORS
 // Use double precision
 //# define USE_DOUBLE
@@ -23,15 +24,16 @@
 #   define float double
 # endif
 typedef v3<float> float3;
+
 #endif // USE_SSE_VECTORS
 
 
 // Implementation-agnostic functions
 
-static inline float3 vbound(float3 min, float3 v, float3 max) { return vmin(vmax(min, v), max); }
-static inline float3 vsqlength(float3 v) { return vdot(v, v); }
+static inline float3 vbound(float3r min, float3r v, float3r max) { return vmin(vmax(min, v), max); }
+static inline float3 vsqlength(float3r v) { return vdot(v, v); }
 
-static inline float3 vreflect(float3 ray, float3 normal)
+static inline float3 vreflect(float3r ray, float3r normal)
 {
   return ray - (float(2.0)*vdot(ray, normal))*normal;
 }

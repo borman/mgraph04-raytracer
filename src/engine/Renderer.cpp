@@ -9,14 +9,13 @@ using std::max;
 
 static const Pixel background = { float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), float3(), FLT_MAX, 0.0f, 0.0f, 0, 0 };
 
-inline static float3 estimateNormal(DistanceField dist, const float3 &z);
-static bool rayCast(const float3 &origin, const float3 &ray, DistanceField dist,
+inline static float3 estimateNormal(DistanceField dist, float3r z);
+static bool rayCast(float3r origin, float3r ray, DistanceField dist,
                     float minz, float maxz,
                     float &_z, float3 &_hit, float &_prox, int &_steps);
-static inline float rayCastShadow(const float3 &origin, const float3 &ray, DistanceField dist,
+static inline float rayCastShadow(float3r origin, float3r ray, DistanceField dist,
                                   float maxz, int &_steps);
-static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist);
-static void renderPixel(Renderer::Pixel &pix, const float3 &origin, DistanceField dist, const float3 &ray);
+static float ambientOcclusion(float3r point, float3r normal, DistanceField dist);
 
 
 float3 Renderer::Pixel::blend() const
@@ -29,7 +28,7 @@ float3 Renderer::Pixel::blend() const
 
 
 // Render a single pixel
-void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float3 origin, float3 ray, int depth, bool inner) const
+void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float3r origin, float3r ray, int depth, bool inner) const
 {
   DistanceField dist = inner? innerSceneDist : sceneDist;
 
@@ -63,7 +62,7 @@ void Renderer::Scene::shade(Renderer::Pixel &pix, bool inner) const
   pix.ambientOcclusion = ambientOcclusion(pix.pos, pix.normal, dist);
   pix.diffuse = float3(0.0f, 0.0f, 0.0f);
   pix.specular = float3(0.0f, 0.0f, 0.0f);
-  for (int i=0; i<lights.size(); i++)
+  for (size_t i=0; i<nLights; i++)
   {
     float3 lvec = lights[i].pos - pix.pos;
     float dl = vlength(lvec).scalar();
@@ -86,7 +85,6 @@ void Renderer::Scene::shade(Renderer::Pixel &pix, bool inner) const
 void Renderer::Scene::reflectRefract(Renderer::Pixel &pix, int depth, bool inner) const
 {
   const Material &mat = materials[pix.matId];
-  DistanceField dist = inner? innerSceneDist : sceneDist;
 
   // Compute Fresnel coefficients
   float k = inner? mat.refractionIndex : 1.0f/mat.refractionIndex; // FIXME: handle actual index relation
@@ -132,7 +130,7 @@ void Renderer::Scene::renderPixel(Renderer::Pixel &pix, float x, float y) const
 }
 
 // Numeric gradient approximation
-inline static float3 estimateNormal(DistanceField dist, const float3 &p)
+inline static float3 estimateNormal(DistanceField dist, float3r p)
 {
   static const float eps = 1e-4f;
 
@@ -145,7 +143,7 @@ inline static float3 estimateNormal(DistanceField dist, const float3 &p)
 
 // Ray marching tracer
 // TODO: detect material boundary as a hit?
-static bool rayCast(const float3 &origin, const float3 &ray, DistanceField dist,
+static bool rayCast(float3r origin, float3r ray, DistanceField dist,
                     float minz, float maxz,
                     float &_z, float3 &_hit, float &_prox, int &_steps)
 {
@@ -182,7 +180,7 @@ static bool rayCast(const float3 &origin, const float3 &ray, DistanceField dist,
   return isHit;
 }
 
-static inline float rayCastShadow(const float3 &origin, const float3 &ray, DistanceField dist,
+static inline float rayCastShadow(float3r origin, float3r ray, DistanceField dist,
                                   float maxz, int &_steps)
 {
   float z=0, prox=0;
@@ -191,7 +189,7 @@ static inline float rayCastShadow(const float3 &origin, const float3 &ray, Dista
   return prox;
 }
 
-static float ambientOcclusion(const float3 &point, const float3 &normal, DistanceField dist)
+static float ambientOcclusion(float3r point, float3r normal, DistanceField dist)
 {
   static const float delta = 0.1f;
   static const float blend = 1.0f;
@@ -204,14 +202,16 @@ static float ambientOcclusion(const float3 &point, const float3 &normal, Distanc
   return 1 - blend*ao;
 }
 
-float3 Renderer::Material::diffuseLambert(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+float3 Renderer::Material::diffuseLambert(float3r normal, float3r /*eye*/, float3r light,
+                                          const Renderer::Material &/*mat*/)
 {
   return vdot(light, normal);
 }
 
-float3 Renderer::Material::diffuseOrenNayar(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+/*
+float3 Renderer::Material::diffuseOrenNayar(float3 normal, float3 eye, float3 light,
+                                            const Renderer::Material &mat)
 {
-  /*
   float a = 1.0f - 0.5f*sqr(mat.roughness)/(sqr(mat.roughness) + 0.33);
   float b = 0.45f*sqr(mat.roughness)/(sqr(mat.roughness) + 0.09);
   float thetai = acosf(vdot(light, normal).scalar());
@@ -219,23 +219,29 @@ float3 Renderer::Material::diffuseOrenNayar(float3 normal, float3 eye, float3 li
   float alpha = max(thetai, thetar);
   float beta = min(thetai, thetar);
   float dphi = atan2f(
-  */
+
   return float3(0.0f);
 }
+*/
 
-float3 Renderer::Material::specularPhong(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+float3 Renderer::Material::specularPhong(float3r normal, float3r eye, float3r light,
+                                         const Renderer::Material &mat)
 {
   float3 k = vdot(vreflect(light, normal), eye);
   return float3(powf(k.scalar(), mat.shininess));
 }
 
-float3 Renderer::Material::specularBlinn(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+float3 Renderer::Material::specularBlinn(float3r normal, float3r eye, float3r light,
+                                         const Renderer::Material &mat)
 {
   float3 k = vdot(vnormalize(eye+light), normal);
   return float3(powf(k.scalar(), mat.shininess));
 }
 
-float3 Renderer::Material::specularCookTorrance(float3 normal, float3 eye, float3 light, const Renderer::Material &mat)
+/*
+float3 Renderer::Material::specularCookTorrance(float3 normal, float3 eye, float3 light,
+                                                const Renderer::Material &mat)
 {
   return float3(0.0f);
 }
+*/
